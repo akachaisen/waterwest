@@ -1,0 +1,78 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #f4f6f9;
+  --surface: #ffffff;
+  --surface-2: #f8fafc;
+  --text: #0f172a;
+  --muted: #5b6b80;
+  --border: #e2e8f0;
+  --accent: #0b6aa8;
+  --river: #7cb8e3;
+
+  --red: #d92d20;
+  --red-bg: #fef1f0;
+  --orange: #e2620b;
+  --orange-bg: #fff4ea;
+  --yellow: #b88a00;
+  --yellow-bg: #fdf8e3;
+  --green: #138a43;
+  --green-bg: #ecf8f0;
+  --unknown: #94a3b8;
+  --unknown-bg: #f1f5f9;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0a111c;
+    --surface: #111b2a;
+    --surface-2: #0e1724;
+    --text: #e6edf5;
+    --muted: #93a4b8;
+    --border: #1f2c3f;
+    --accent: #5cb3ee;
+    --river: #2f6f9f;
+
+    --red: #ff6b5e;
+    --red-bg: #3a1513;
+    --orange: #ff9a4d;
+    --orange-bg: #3a2110;
+    --yellow: #f2c94c;
+    --yellow-bg: #332a0c;
+    --green: #4cd486;
+    --green-bg: #0f2e1d;
+    --unknown: #7b8ba0;
+    --unknown-bg: #1a2433;
+  }
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-text: var(--text);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-river: var(--river);
+  --color-red: var(--red);
+  --color-red-bg: var(--red-bg);
+  --color-orange: var(--orange);
+  --color-orange-bg: var(--orange-bg);
+  --color-yellow: var(--yellow);
+  --color-yellow-bg: var(--yellow-bg);
+  --color-green: var(--green);
+  --color-green-bg: var(--green-bg);
+  --color-unknown: var(--unknown);
+  --color-unknown-bg: var(--unknown-bg);
+  --font-sans: var(--font-thai), system-ui, sans-serif;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
