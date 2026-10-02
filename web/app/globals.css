@@ -20,6 +20,10 @@
   --green-bg: #ecf8f0;
   --unknown: #94a3b8;
   --unknown-bg: #f1f5f9;
+
+  /* สีเส้นกราฟ (ผ่านการตรวจ CVD แล้ว) */
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -43,6 +47,9 @@
     --green-bg: #0f2e1d;
     --unknown: #7b8ba0;
     --unknown-bg: #1a2433;
+
+    --series-1: #3987e5;
+    --series-2: #d95926;
   }
 }
 

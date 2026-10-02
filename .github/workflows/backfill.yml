@@ -1,0 +1,29 @@
+# ขั้นที่ 4: เติมข้อมูลย้อนหลัง (กดรันเองจากแท็บ Actions)
+name: backfill
+
+on:
+  workflow_dispatch:
+    inputs:
+      station_days:
+        description: 'จำนวนวันย้อนหลังของสถานี (ThaiWater)'
+        default: '7'
+      dam_days:
+        description: 'จำนวนวันย้อนหลังของเขื่อน (กรมชลฯ)'
+        default: '30'
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: เติมข้อมูลย้อนหลัง
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          STATION_DAYS: ${{ inputs.station_days }}
+          DAM_DAYS: ${{ inputs.dam_days }}
+        run: node ingest/backfill.mjs "$STATION_DAYS" "$DAM_DAYS"

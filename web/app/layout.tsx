@@ -27,7 +27,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="th" className={`${thai.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col font-sans">
         <header className="sticky top-0 z-10 border-b border-border bg-surface/90 backdrop-blur">
-          <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-2.5">
+          <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-x-3 gap-y-1.5 px-4 py-2.5">
             <Link href="/" className="flex items-center gap-2">
               <span className="grid size-8 place-items-center rounded-lg bg-accent text-white dark:text-bg" aria-hidden>
                 <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -38,7 +38,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               </span>
               <span className="leading-tight">
                 <span className="block text-sm font-bold">WaterWest</span>
-                <span className="block text-[0.7rem] text-muted">ติดตามน้ำลุ่มแม่กลอง</span>
+                <span className="hidden text-[0.7rem] text-muted sm:block">ติดตามน้ำลุ่มแม่กลอง</span>
               </span>
             </Link>
             <NavLinks />

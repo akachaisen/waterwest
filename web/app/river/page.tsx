@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { getSnapshot } from "@/lib/data";
 import { fmt, fmtSigned, fmtTime } from "@/lib/status";
 import { CONFLUENCE, KHWAE_NOI, KHWAE_YAI, KM_FROM_MAEKLONG_DAM, LOWER, MOUTH_KM, SEGMENTS, travelHours, TRIBUTARY } from "@/lib/route";
@@ -176,7 +177,7 @@ function StationNode({ s, km, tributary }: { s: Station; km?: number; tributary?
       <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
         <div>
           <h3 className="font-semibold leading-snug">
-            {s.name}
+            <Link href={`/stations/${encodeURIComponent(s.code)}`} className="hover:text-accent hover:underline">{s.name}</Link>
             {s.isKey && <span className="ml-1.5 rounded bg-accent/10 px-1.5 py-0.5 align-middle text-[0.65rem] font-semibold text-accent">สถานีหลัก</span>}
           </h3>
           <p className="text-xs text-muted">

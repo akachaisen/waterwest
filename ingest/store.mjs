@@ -75,32 +75,42 @@ const CONFLICT = {
   ingest_runs: null,
 };
 
-export async function store(snapshot, env = process.env) {
+export function dbConfig(env = process.env) {
   const url = env.SUPABASE_URL?.replace(/\/$/, '');
   const key = env.SUPABASE_SECRET_KEY;
-  if (!url || !key) return { skipped: true, reason: 'ยังไม่ได้ตั้งค่า SUPABASE_URL / SUPABASE_SECRET_KEY' };
-
+  if (!url || !key) return null;
   const headers = { apikey: key, 'Content-Type': 'application/json' };
   // คีย์แบบเก่า (JWT service_role) ต้องส่ง Authorization ด้วย · คีย์แบบใหม่ sb_secret_ ใช้ apikey อย่างเดียว
   if (key.startsWith('eyJ')) headers.Authorization = `Bearer ${key}`;
+  return { url, headers };
+}
+
+// upsert ทีละไม่เกิน 1,000 แถว
+export async function upsert(db, table, data) {
+  const onConflict = CONFLICT[table];
+  const qs = onConflict ? `?on_conflict=${onConflict}` : '';
+  const prefer = onConflict ? 'resolution=merge-duplicates,return=minimal' : 'return=minimal';
+  for (let i = 0; i < data.length; i += 1000) {
+    const res = await fetch(`${db.url}/rest/v1/${table}${qs}`, {
+      method: 'POST',
+      headers: { ...db.headers, Prefer: prefer },
+      body: JSON.stringify(data.slice(i, i + 1000)),
+      signal: AbortSignal.timeout(60000),
+    });
+    if (!res.ok) throw new Error(`บันทึก ${table} ไม่สำเร็จ: HTTP ${res.status} ${await res.text()}`);
+  }
+  return data.length;
+}
+
+export async function store(snapshot, env = process.env) {
+  const db = dbConfig(env);
+  if (!db) return { skipped: true, reason: 'ยังไม่ได้ตั้งค่า SUPABASE_URL / SUPABASE_SECRET_KEY' };
 
   const rows = buildRows(snapshot);
   const result = {};
   // stations ต้องมาก่อน readings (foreign key)
   for (const table of ['stations', 'readings', 'dam_daily', 'rain_forecast', 'sea_level', 'ingest_runs']) {
-    const data = rows[table];
-    if (!data.length) { result[table] = 0; continue; }
-    const onConflict = CONFLICT[table];
-    const qs = onConflict ? `?on_conflict=${onConflict}` : '';
-    const prefer = onConflict ? 'resolution=merge-duplicates,return=minimal' : 'return=minimal';
-    const res = await fetch(`${url}/rest/v1/${table}${qs}`, {
-      method: 'POST',
-      headers: { ...headers, Prefer: prefer },
-      body: JSON.stringify(data),
-      signal: AbortSignal.timeout(30000),
-    });
-    if (!res.ok) throw new Error(`บันทึก ${table} ไม่สำเร็จ: HTTP ${res.status} ${await res.text()}`);
-    result[table] = data.length;
+    result[table] = rows[table].length ? await upsert(db, table, rows[table]) : 0;
   }
   return result;
 }

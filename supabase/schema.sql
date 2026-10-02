@@ -80,12 +80,23 @@ create table if not exists ingest_runs (
 create index if not exists ingest_runs_time on ingest_runs (started_at desc);
 
 -- ค่าล่าสุดของแต่ละสถานี (ใช้ในหน้าเว็บ)
-create or replace view latest_readings as
+create or replace view latest_readings with (security_invoker = true) as
 select distinct on (r.station_code)
   r.*, s.name, s.seg, s.is_key, s.capacity
 from readings r
 join stations s on s.code = r.station_code
 order by r.station_code, r.measured_at desc;
+
+-- ค่าเฉลี่ยรายชั่วโมง (ใช้ทำกราฟ — รวมทุกแหล่งของสถานีเดียวกัน)
+create or replace view readings_hourly with (security_invoker = true) as
+select
+  station_code,
+  date_trunc('hour', measured_at) as hour,
+  round(avg(diff_bank), 3) as diff_bank,
+  round(avg(q), 1)         as q,
+  count(*)                 as n
+from readings
+group by station_code, date_trunc('hour', measured_at);
 
 -- ข้อมูลเป็นสาธารณะ: ทุกคนอ่านได้ เขียนได้เฉพาะสคริปต์ (secret key ข้าม RLS)
 alter table stations      enable row level security;

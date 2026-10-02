@@ -58,7 +58,9 @@ async function main() {
     if (diff !== null && Math.abs(diff) >= 30) { qc.push(`ตัดค่าเทียบตลิ่ง ${diff} (ไม่มีระดับตลิ่งที่ถูกต้อง)`); diff = null; }
     let q = rec.q;
     if (q !== null && (q < 0 || q > 20000)) { qc.push(`ตัดค่าปริมาณ ${q}`); q = null; }
-    if (q !== null && egat?.q && Math.abs(q - egat.q) / egat.q > 0.2) qc.push(`ปริมาณต่างจาก กฟผ. เกิน 20% (${q} vs ${egat.q})`);
+    if (q === 0 && egat?.q > 10) { qc.push(`ปริมาณ 0 ขัดกับ กฟผ. (${egat.q}) → ใช้ค่า กฟผ.`); q = egat.q; }
+    else if (q === 0 && egat && !egat.q) { qc.push('ปริมาณ 0 แต่ กฟผ. ไม่มีค่า → ถือว่าไม่มีข้อมูล'); q = null; }
+    else if (q !== null && egat?.q && Math.abs(q - egat.q) / egat.q > 0.2) qc.push(`ปริมาณต่างจาก กฟผ. เกิน 20% (${q} vs ${egat.q})`);
     const age = ageHours(rec.time);
     if (age !== null && age < -1) qc.push('เวลาวัดอยู่ในอนาคต');
     const capacity = egat?.capacity ?? rec.q_max ?? null;
