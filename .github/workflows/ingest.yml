@@ -1,0 +1,30 @@
+# ขั้นที่ 2: ดึงข้อมูลน้ำทุก 15 นาที แล้วบันทึกลง Supabase
+# ต้องตั้ง Secrets ใน GitHub: SUPABASE_URL, SUPABASE_SECRET_KEY
+name: ingest
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'   # GitHub อาจเลื่อนเวลาไปบ้างช่วงที่ระบบหนาแน่น
+  workflow_dispatch: {}      # กดรันเองได้จากแท็บ Actions
+
+concurrency:
+  group: ingest
+  cancel-in-progress: false
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: ดึงข้อมูลและบันทึก
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+        run: node ingest/snapshot.mjs --quiet
+      - name: สรุปผลในหน้า Actions
+        if: always()
+        run: test -f data/latest.md && cat data/latest.md >> "$GITHUB_STEP_SUMMARY" || true
