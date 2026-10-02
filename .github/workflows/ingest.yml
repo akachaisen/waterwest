@@ -4,7 +4,7 @@ name: ingest
 
 on:
   schedule:
-    - cron: '*/15 * * * *'   # GitHub อาจเลื่อนเวลาไปบ้างช่วงที่ระบบหนาแน่น
+    - cron: '7,22,37,52 * * * *'   # ทุก 15 นาที เลี่ยงนาที :00/:15 ที่ GitHub หนาแน่น (อาจเลื่อนได้บ้าง)
   workflow_dispatch: {}      # กดรันเองได้จากแท็บ Actions
 
 concurrency:
