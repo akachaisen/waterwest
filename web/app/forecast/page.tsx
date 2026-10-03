@@ -18,8 +18,8 @@ const EVENT = [
   { code: "K.37", name: "แควน้อย บ้านวังเย็น", peak: "30 ก.ย. 02:00", gap: "—" },
   { code: "K.3A", name: "กาญจนบุรี หน้าศาลากลาง", peak: "30 ก.ย. 16:00", gap: "+14 ชม." },
   { code: "K.11A", name: "ท่าม่วง (ท้ายเขื่อนแม่กลอง)", peak: "30 ก.ย. 19:00", gap: "+3 ชม." },
-  { code: "K.55A", name: "บ้านโป่ง สะพานค่ายหลวง", peak: "1 ต.ค. 08:00", gap: "+5–13 ชม." },
-  { code: "RAJ001", name: "โพธาราม", peak: "1 ต.ค. 09:00", gap: "+1–3 ชม." },
+  { code: "K.55A", name: "บ้านโป่ง สะพานค่ายหลวง (47 กม.)", peak: "1 ต.ค. 08:00", gap: "+5–13 ชม." },
+  { code: "RAJ001", name: "โพธาราม (71 กม.)", peak: "1 ต.ค. 09:00", gap: "+1–3 ชม." },
 ];
 
 export default async function ForecastPage() {
@@ -78,7 +78,7 @@ export default async function ForecastPage() {
                 </thead>
                 <tbody>
                   {plan.rows.map((r) => {
-                    const clash = sea && (r.code === "TK.74" || r.code === "MOUTH") ? tideClash(r.eta, sea.tides) : undefined;
+                    const clash = sea && (r.code === "MKG006" || r.code === "MOUTH") ? tideClash(r.eta, sea.tides) : undefined;
                     return (
                       <tr key={r.code} className="border-t border-border align-top">
                         <td className="py-2 pr-2">
@@ -111,7 +111,7 @@ export default async function ForecastPage() {
               </table>
             </div>
             <p className="mt-2 text-xs text-muted">
-              เวลาเดินทาง: เขื่อนแม่กลอง→บ้านโป่ง ~8 ชม. และ →โพธาราม ~11 ชม. จากข้อมูลจริง · →ราชบุรี ~17 ชม. และ →ปากอ่าว ~28 ชม. ตามตัวเลขทางการ ·
+              เวลาเดินทาง: เขื่อนแม่กลอง→บ้านโป่ง ~7 ชม. และ →โพธาราม ~10 ชม. จากข้อมูลจริง · →ราชบุรี ~13 ชม. (ตัวเลขทางการ ~17 ชม. — ควรเผื่อเวลา) · →ปากอ่าว ~28 ชม. ตามตัวเลขทางการ ·
               ต.เจดีย์หักไม่ติดแม่น้ำ ผลกระทบมาทางคลองที่ระบายลงแม่กลองไม่ทัน จึงใช้เวลาเดียวกับตัวเมืองราชบุรี
             </p>
           </>

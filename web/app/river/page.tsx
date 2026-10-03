@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getSnapshot } from "@/lib/data";
 import { fmt, fmtSigned, fmtTime } from "@/lib/status";
-import { CONFLUENCE, KHWAE_NOI, KHWAE_YAI, KM_FROM_MAEKLONG_DAM, LOWER, MOUTH_KM, SEGMENTS, travelHours, TRIBUTARY } from "@/lib/route";
+import { CANAL_STATIONS, CONFLUENCE, KHWAE_NOI, KHWAE_YAI, KM_FROM_MAEKLONG_DAM, LOWER, MOUTH_KM, SEGMENTS, travelHours, TRIBUTARY } from "@/lib/route";
 import type { Dam, Level, Station } from "@/lib/types";
 import { Badge, levelDot, levelText, Measured, Trend } from "@/components/ui";
 
@@ -183,6 +183,7 @@ function StationNode({ s, km, tributary }: { s: Station; km?: number; tributary?
           <p className="text-xs text-muted">
             {s.code}
             {tributary && " · ลำน้ำสาขา (ลำตะเพิน)"}
+            {CANAL_STATIONS.has(s.code) && " · สถานีในคลอง (ไม่ใช่แม่น้ำสายหลัก)"}
             {s.source && ` · ${s.source}`}
           </p>
         </div>

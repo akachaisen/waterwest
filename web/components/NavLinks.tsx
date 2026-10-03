@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 
 const LINKS = [
   { href: "/", label: "ภาพรวม" },
+  { href: "/area", label: "พื้นที่ของฉัน" },
   { href: "/alerts", label: "เตือนภัย" },
   { href: "/river", label: "เส้นทางน้ำ" },
   { href: "/forecast", label: "คาดการณ์" },
@@ -17,7 +18,7 @@ const LINKS = [
 export function NavLinks() {
   const pathname = usePathname();
   return (
-    <nav className="flex w-full gap-0.5 overflow-x-auto text-sm sm:w-auto">
+    <nav className="no-scrollbar flex w-full gap-0.5 overflow-x-auto text-sm sm:w-auto">
       {LINKS.map((l) => {
         const active = l.href === "/" ? pathname === "/" : pathname.startsWith(l.href);
         return (

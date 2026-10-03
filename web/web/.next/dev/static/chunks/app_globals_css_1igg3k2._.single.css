@@ -508,6 +508,14 @@
     height: calc(var(--spacing) * 10);
   }
 
+  .h-16 {
+    height: calc(var(--spacing) * 16);
+  }
+
+  .h-80 {
+    height: calc(var(--spacing) * 80);
+  }
+
   .h-\[70vh\] {
     height: 70vh;
   }
@@ -534,6 +542,10 @@
 
   .w-4 {
     width: calc(var(--spacing) * 4);
+  }
+
+  .w-5 {
+    width: calc(var(--spacing) * 5);
   }
 
   .w-24 {
@@ -583,6 +595,14 @@
 
   .grid-cols-2 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .grid-cols-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .grid-cols-7 {
+    grid-template-columns: repeat(7, minmax(0, 1fr));
   }
 
   .flex-col {
@@ -797,6 +817,10 @@
   .border-l-4 {
     border-left-style: var(--tw-border-style);
     border-left-width: 4px;
+  }
+
+  .border-accent {
+    border-color: var(--accent);
   }
 
   .border-border {
@@ -1200,6 +1224,10 @@
       color: var(--accent);
     }
 
+    .hover\:text-red:hover {
+      color: var(--red);
+    }
+
     .hover\:text-text:hover {
       color: var(--text);
     }
@@ -1207,6 +1235,10 @@
     .hover\:underline:hover {
       text-decoration-line: underline;
     }
+  }
+
+  .focus\:border-accent:focus {
+    border-color: var(--accent);
   }
 
   .focus-visible\:ring-2:focus-visible {
@@ -1233,6 +1265,10 @@
 
     .sm\:grid-cols-2 {
       grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .sm\:grid-cols-3 {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 
     .sm\:grid-cols-4 {
@@ -1327,6 +1363,14 @@
 body {
   background: var(--bg);
   color: var(--text);
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }
 
 .tnum {

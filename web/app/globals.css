@@ -80,6 +80,14 @@ body {
   color: var(--text);
 }
 
+/* เลื่อนได้แต่ไม่แสดงแถบเลื่อน (เมนูบนมือถือ) */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 .tnum {
   font-variant-numeric: tabular-nums;
 }
