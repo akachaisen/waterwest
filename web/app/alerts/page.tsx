@@ -3,6 +3,7 @@ import { getSnapshot } from "@/lib/data";
 import { fmtTime } from "@/lib/status";
 import type { Level } from "@/lib/types";
 import { Badge, Card, SectionTitle } from "@/components/ui";
+import { LINE_OA_ID } from "@/lib/places";
 
 export const revalidate = 300;
 export const metadata: Metadata = { title: "เตือนภัย" };
@@ -30,7 +31,7 @@ export default async function AlertsPage() {
     ? state.filter((a) => a.active)
     : s.alerts.filter((a) => a.level !== "info").map((a) => ({ key: a.text, level: a.level as Level, text: a.text, first_seen: s.generatedAt, last_seen: s.generatedAt, active: true, cleared_at: null, notified_at: null }));
   const history = state ? state.filter((a) => !a.active) : [];
-  const lineId = process.env.NEXT_PUBLIC_LINE_OA_ID;
+  const lineId = process.env.NEXT_PUBLIC_LINE_OA_ID ?? LINE_OA_ID;
 
   return (
     <div className="space-y-5">

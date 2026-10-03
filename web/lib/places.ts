@@ -1,5 +1,8 @@
 // จุดคงที่บนแผนที่: เขื่อน กล้อง CCTV และพื้นที่ที่ติดตาม
 
+// LINE Official Account สำหรับรับแจ้งเตือน (ID สาธารณะ ไม่ใช่ความลับ)
+export const LINE_OA_ID = "@834fsaeo";
+
 export type Camera = {
   id: string;
   dam: "VRK" | "SNR";
