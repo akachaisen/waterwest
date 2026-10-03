@@ -5,6 +5,8 @@ import { fmt, fmtTime } from "@/lib/status";
 import type { Dam, Level } from "@/lib/types";
 import { Badge, Card, Meter } from "@/components/ui";
 import { LineChart } from "@/components/LineChart";
+import { CameraGrid } from "@/components/CameraGrid";
+import { CAMERAS, type Camera } from "@/lib/places";
 
 export const revalidate = 300;
 export const metadata: Metadata = { title: "เขื่อน" };
@@ -29,8 +31,8 @@ export default async function DamsPage() {
         <p className="mt-1 text-sm text-muted">เขื่อนต้นน้ำ 2 แห่ง และน้ำที่ปล่อยผ่านเขื่อนแม่กลอง · ข้อมูลอ่างเก็บน้ำจากกรมชลประทาน (รายวัน)</p>
       </div>
 
-      {vrk && <DamSection dam={vrk} river="แม่น้ำแควน้อย" history={vrkH} cctv />}
-      {snr && <DamSection dam={snr} river="แม่น้ำแควใหญ่" history={snrH} />}
+      {vrk && <DamSection dam={vrk} river="แม่น้ำแควน้อย" history={vrkH} cameras={CAMERAS.filter((c) => c.dam === "VRK")} />}
+      {snr && <DamSection dam={snr} river="แม่น้ำแควใหญ่" history={snrH} cameras={CAMERAS.filter((c) => c.dam === "SNR")} />}
 
       <Card>
         <div className="flex flex-wrap items-start justify-between gap-2">
@@ -80,7 +82,7 @@ export default async function DamsPage() {
   );
 }
 
-function DamSection({ dam, river, history, cctv }: { dam: Dam; river: string; history: Awaited<ReturnType<typeof getDamHistory>>; cctv?: boolean }) {
+function DamSection({ dam, river, history, cameras }: { dam: Dam; river: string; history: Awaited<ReturnType<typeof getDamHistory>>; cameras: Camera[] }) {
   const level: Level = dam.pct >= 98 && dam.netMcm > 0 ? "orange" : dam.pct >= 95 ? "yellow" : "green";
   return (
     <Card>
@@ -135,28 +137,10 @@ function DamSection({ dam, river, history, cctv }: { dam: Dam; river: string; hi
         </div>
       </div>
 
-      {cctv && (
+      {cameras.length > 0 && (
         <div className="mt-4">
-          <h3 className="mb-2 text-sm font-semibold">กล้อง CCTV เขื่อนวชิราลงกรณ (กฟผ.)</h3>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {[
-              ["https://vrkdam.egat.co.th/cctv/image1.php", "สันเขื่อนวชิราลงกรณ"],
-              ["https://vrkdam.egat.co.th/cctv/image2.php", "ท้ายน้ำโรงไฟฟ้า-แม่น้ำแควน้อย"],
-            ].map(([src, name]) => (
-              <figure key={src}>
-                {/* eslint-disable-next-line @next/next/no-img-element -- ภาพสแนปช็อตสดจากกล้อง กฟผ. */}
-                <img src={src} alt={`ภาพจากกล้อง ${name}`} className="aspect-video w-full rounded-lg border border-border bg-surface-2 object-cover" loading="lazy" />
-                <figcaption className="mt-1 text-xs text-muted">{name} · ภาพ ณ เวลาที่เปิดหน้า</figcaption>
-              </figure>
-            ))}
-          </div>
-          <p className="mt-1 text-xs text-muted">
-            ภาพจาก{" "}
-            <a href="https://vrkdam.egat.co.th/index.php" target="_blank" rel="noopener noreferrer" className="text-accent underline">
-              เว็บไซต์เขื่อนวชิราลงกรณ
-            </a>{" "}
-            · หน้ากล้องเต็มรูปแบบจะทำในขั้นที่ 5
-          </p>
+          <h3 className="mb-2 text-sm font-semibold">กล้อง CCTV (กฟผ.) · โหลดใหม่ทุก 1 นาที</h3>
+          <CameraGrid cameras={cameras} />
         </div>
       )}
     </Card>

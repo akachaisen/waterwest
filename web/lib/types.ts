@@ -5,6 +5,8 @@ export type Station = {
   name: string;
   seg: string;
   isKey: boolean;
+  lat: number | null;
+  lon: number | null;
   source: string | null;
   time: string | null; // ISO เวลาวัด
   ageMin: number | null;

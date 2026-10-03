@@ -9,7 +9,7 @@ import type { Alert, RainPoint, Snapshot, Station } from "./types";
 //  - ไม่ตั้งค่า → อ่านไฟล์ ../data/latest.json ที่ได้จาก `npm run snapshot` (ใช้ทดสอบในเครื่อง)
 
 type RawStation = {
-  code: string; name: string; seg: string; is_key: boolean; source: string | null; time: string | null;
+  code: string; name: string; seg: string; is_key: boolean; lat?: number | null; lon?: number | null; source: string | null; time: string | null;
   wl: number | null; diff_bank: number | null; q: number | null; capacity: number | null; trend: string | null;
 };
 
@@ -25,6 +25,8 @@ function toStation(r: RawStation, now: number): Station {
     name: r.name,
     seg: r.seg,
     isKey: r.is_key,
+    lat: num(r.lat),
+    lon: num(r.lon),
     source: r.source,
     time: r.time,
     ageMin,
@@ -55,7 +57,7 @@ async function fromFile(): Promise<Snapshot> {
     generatedAt: s.generated_at,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     stations: s.stations.filter((x: any) => !x.missing).map((x: any) =>
-      toStation({ code: x.code, name: x.name, seg: x.seg, is_key: !!x.key, source: x.source, time: x.time, wl: x.wl_msl, diff_bank: x.diff_bank, q: x.q, capacity: x.capacity, trend: x.trend }, now),
+      toStation({ code: x.code, name: x.name, seg: x.seg, is_key: !!x.key, lat: x.lat, lon: x.lon, source: x.source, time: x.time, wl: x.wl_msl, diff_bank: x.diff_bank, q: x.q, capacity: x.capacity, trend: x.trend }, now),
     ),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     dams: s.dams.filter((d: any) => !d.missing).map((d: any) =>
@@ -77,13 +79,15 @@ async function fromSupabase(url: string, key: string): Promise<Snapshot> {
   };
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   type Any = any;
-  const [latest, runs, dams, rain, sea] = await Promise.all([
+  const [latest, runs, dams, rain, sea, coords] = await Promise.all([
     get<Any[]>("latest_readings?select=*"),
     get<Any[]>("ingest_runs?select=*&order=started_at.desc&limit=1"),
     get<Any[]>("dam_daily?select=*&order=date.desc&limit=6"),
     get<Any[]>("rain_forecast?select=*&order=issued_on.desc,forecast_date.asc&limit=60"),
     get<Any[]>(`sea_level?select=*&at=gte.${new Date(Date.now() - 3600e3).toISOString()}&order=at.asc&limit=24`),
+    get<Any[]>("stations?select=code,lat,lon"),
   ]);
+  const ll = new Map(coords.map((c) => [c.code, c]));
   const now = Date.now();
   const run = runs[0];
 
@@ -103,7 +107,7 @@ async function fromSupabase(url: string, key: string): Promise<Snapshot> {
     origin: "supabase",
     generatedAt: run?.started_at ?? new Date().toISOString(),
     stations: latest.map((r) =>
-      toStation({ code: r.station_code, name: r.name, seg: r.seg, is_key: r.is_key, source: r.source, time: r.measured_at, wl: r.wl, diff_bank: r.diff_bank, q: r.q, capacity: r.capacity, trend: r.trend }, now),
+      toStation({ code: r.station_code, name: r.name, seg: r.seg, is_key: r.is_key, lat: ll.get(r.station_code)?.lat, lon: ll.get(r.station_code)?.lon, source: r.source, time: r.measured_at, wl: r.wl, diff_bank: r.diff_bank, q: r.q, capacity: r.capacity, trend: r.trend }, now),
     ),
     dams: damRows.map((d) =>
       damDerived({ id: d.dam_id, name: d.name, date: d.date, volume: Number(d.volume), normal_storage: Number(d.normal_storage), pct: Number(d.pct), inflow_mcm: Number(d.inflow_mcm), outflow_mcm: Number(d.outflow_mcm) }),

@@ -8,6 +8,8 @@ const LINKS = [
   { href: "/river", label: "เส้นทางน้ำ" },
   { href: "/dams", label: "เขื่อน" },
   { href: "/stations", label: "สถานี" },
+  { href: "/map", label: "แผนที่" },
+  { href: "/cctv", label: "กล้อง" },
 ];
 
 export function NavLinks() {
