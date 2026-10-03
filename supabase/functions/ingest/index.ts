@@ -3,7 +3,8 @@
 // โค้ดหลักอยู่ที่ ingest/core.mjs (ใช้ร่วมกับสคริปต์ Node) — สร้างไฟล์ deploy ด้วย `npm run build:function`
 
 import { collect } from "../../../ingest/core.mjs";
-import { dbConfig, store } from "../../../ingest/store.mjs";
+import { dbConfig, store, upsert } from "../../../ingest/store.mjs";
+import { formatLine, sendLine, syncAlerts } from "../../../ingest/alerts.mjs";
 
 const MIN_GAP_MIN = 8;
 
@@ -46,5 +47,23 @@ Deno.serve(async () => {
   const snapshot = await collect();
   const saved = await store(snapshot, env);
   const failed = Object.entries(snapshot.sources).filter(([, v]) => v !== "ok").map(([k]) => k);
-  return json({ ok: true, generated_at: snapshot.generated_at, saved, failed });
+
+  // ขั้นที่ 6: เตือนภัย + LINE (ส่งเฉพาะเหตุใหม่/รุนแรงขึ้น/คลี่คลาย)
+  const token = Deno.env.get("LINE_CHANNEL_ACCESS_TOKEN");
+  let alerts: Record<string, unknown> = {};
+  try {
+    const sync = await syncAlerts(db, snapshot, { lineReady: !!token });
+    const text = formatLine(sync, snapshot, Deno.env.get("WEB_URL"));
+    let line = "ไม่มีเรื่องต้องแจ้ง";
+    if (text && token) {
+      await sendLine(token, text);
+      line = "ส่งแล้ว";
+    } else if (text) line = "ยังไม่ได้ตั้งค่า LINE_CHANNEL_ACCESS_TOKEN";
+    // บันทึกสถานะหลังส่งสำเร็จเท่านั้น — ถ้าส่งไม่ผ่านจะลองใหม่รอบหน้า
+    await upsert(db, "alert_state", sync.rows);
+    alerts = { active: sync.active.length, raised: sync.raised.length, cleared: sync.cleared.length, line };
+  } catch (e) {
+    alerts = { error: String((e as Error).message ?? e) };
+  }
+  return json({ ok: true, generated_at: snapshot.generated_at, saved, failed, alerts });
 });

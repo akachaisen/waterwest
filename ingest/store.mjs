@@ -73,6 +73,7 @@ const CONFLICT = {
   rain_forecast: 'point_id,forecast_date,issued_on',
   sea_level: 'point,at',
   ingest_runs: null,
+  alert_state: 'key',
 };
 
 export function dbConfig(env = process.env) {

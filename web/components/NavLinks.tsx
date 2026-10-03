@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 
 const LINKS = [
   { href: "/", label: "ภาพรวม" },
+  { href: "/alerts", label: "เตือนภัย" },
   { href: "/river", label: "เส้นทางน้ำ" },
   { href: "/dams", label: "เขื่อน" },
   { href: "/stations", label: "สถานี" },

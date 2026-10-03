@@ -395,7 +395,8 @@ var CONFLICT = {
   dam_daily: "dam_id,date",
   rain_forecast: "point_id,forecast_date,issued_on",
   sea_level: "point,at",
-  ingest_runs: null
+  ingest_runs: null,
+  alert_state: "key"
 };
 function dbConfig(env = process.env) {
   const url = env.SUPABASE_URL?.replace(/\/$/, "");
@@ -431,6 +432,136 @@ async function store(snapshot, env = process.env) {
   return result;
 }
 
+// ingest/alerts.mjs
+var RANK = { yellow: 1, orange: 2, red: 3 };
+var LABEL = { red: "\u{1F534} \u0E27\u0E34\u0E01\u0E24\u0E15", orange: "\u{1F7E0} \u0E40\u0E15\u0E37\u0E2D\u0E19\u0E20\u0E31\u0E22", yellow: "\u{1F7E1} \u0E40\u0E1D\u0E49\u0E32\u0E23\u0E30\u0E27\u0E31\u0E07" };
+var CLEAR_AFTER_MIN = 25;
+var BANK_CLEAR_M = -0.15;
+var fmt2 = (n, d = 0) => Number(n).toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
+function evaluate(snapshot, activeKeys = /* @__PURE__ */ new Set()) {
+  const out = [];
+  const by = Object.fromEntries(snapshot.stations.map((s) => [s.code, s]));
+  for (const s of snapshot.stations) {
+    if (s.missing || s.stale || s.diff_bank === null || s.diff_bank === void 0) continue;
+    const key = `bank:${s.code}`;
+    const over = s.diff_bank > 0 || activeKeys.has(key) && s.diff_bank > BANK_CLEAR_M;
+    if (!over) continue;
+    const rising = s.trend === "\u0E40\u0E1E\u0E34\u0E48\u0E21\u0E02\u0E36\u0E49\u0E19";
+    const level = s.key ? rising ? "red" : "orange" : "yellow";
+    const where = s.diff_bank > 0 ? `\u0E2A\u0E39\u0E07\u0E01\u0E27\u0E48\u0E32\u0E15\u0E25\u0E34\u0E48\u0E07 ${fmt2(s.diff_bank, 2)} \u0E21.` : `\u0E40\u0E1E\u0E34\u0E48\u0E07\u0E25\u0E14\u0E25\u0E07\u0E15\u0E48\u0E33\u0E01\u0E27\u0E48\u0E32\u0E15\u0E25\u0E34\u0E48\u0E07 (${fmt2(s.diff_bank, 2)} \u0E21.)`;
+    out.push({ key, level, text: `${s.name} (${s.code}) ${where}${rising ? " \u0E41\u0E25\u0E30\u0E22\u0E31\u0E07\u0E40\u0E1E\u0E34\u0E48\u0E21\u0E02\u0E36\u0E49\u0E19" : ""}` });
+  }
+  const k37 = by["K.37"];
+  if (k37?.q && k37.capacity && k37.q > k37.capacity && !k37.stale)
+    out.push({ key: "flow:K.37", level: "orange", text: `\u0E41\u0E04\u0E27\u0E19\u0E49\u0E2D\u0E22 K.37 \u0E1B\u0E23\u0E34\u0E21\u0E32\u0E13 ${fmt2(k37.q)} \u0E40\u0E01\u0E34\u0E19\u0E04\u0E27\u0E32\u0E21\u0E08\u0E38\u0E25\u0E33\u0E19\u0E49\u0E33 ${fmt2(k37.capacity)} \u0E25\u0E1A.\u0E21./\u0E27\u0E34` });
+  const mk = snapshot.maeklong_release_proxy;
+  if (mk?.q > 3e3) out.push({ key: "flow:maeklong", level: "red", text: `\u0E19\u0E49\u0E33\u0E17\u0E49\u0E32\u0E22\u0E40\u0E02\u0E37\u0E48\u0E2D\u0E19\u0E41\u0E21\u0E48\u0E01\u0E25\u0E2D\u0E07 (K.55A) ${fmt2(mk.q)} \u0E25\u0E1A.\u0E21./\u0E27\u0E34 \u0E40\u0E01\u0E34\u0E19 3,000` });
+  else if (mk?.q > 2500) out.push({ key: "flow:maeklong", level: "orange", text: `\u0E19\u0E49\u0E33\u0E17\u0E49\u0E32\u0E22\u0E40\u0E02\u0E37\u0E48\u0E2D\u0E19\u0E41\u0E21\u0E48\u0E01\u0E25\u0E2D\u0E07 (K.55A) ${fmt2(mk.q)} \u0E25\u0E1A.\u0E21./\u0E27\u0E34 \u0E40\u0E01\u0E34\u0E19 2,500` });
+  for (const d of snapshot.dams ?? []) {
+    if (d.missing) continue;
+    if (d.pct >= 100) out.push({ key: `dam:${d.id}`, level: "red", text: `${d.name} \u0E40\u0E15\u0E47\u0E21\u0E23\u0E30\u0E14\u0E31\u0E1A\u0E40\u0E01\u0E47\u0E1A\u0E01\u0E31\u0E01 (${fmt2(d.pct, 1)}%) \u0E15\u0E49\u0E2D\u0E07\u0E23\u0E30\u0E1A\u0E32\u0E22\u0E40\u0E1E\u0E34\u0E48\u0E21` });
+    else if (d.pct >= 98 && d.net_mcm_day > 0)
+      out.push({ key: `dam:${d.id}`, level: "orange", text: `${d.name} ${fmt2(d.pct, 1)}% \u0E19\u0E49\u0E33\u0E40\u0E02\u0E49\u0E32\u0E21\u0E32\u0E01\u0E01\u0E27\u0E48\u0E32\u0E23\u0E30\u0E1A\u0E32\u0E22 \u0E23\u0E32\u0E27 ${fmt2(d.days_to_full ?? 0, 1)} \u0E27\u0E31\u0E19\u0E08\u0E30\u0E40\u0E15\u0E47\u0E21 \u2192 \u0E2D\u0E32\u0E08\u0E23\u0E30\u0E1A\u0E32\u0E22\u0E40\u0E1E\u0E34\u0E48\u0E21` });
+  }
+  for (const p of snapshot.rain ?? []) {
+    if (p.id === "rbr") continue;
+    const next3 = p.days.slice(1, 4).reduce((a, b) => a + (b.mm ?? 0), 0);
+    if (next3 >= 50) out.push({ key: `rain:${p.id}`, level: "yellow", text: `\u0E1D\u0E19\u0E04\u0E32\u0E14\u0E01\u0E32\u0E23\u0E13\u0E4C${p.name} 3 \u0E27\u0E31\u0E19\u0E23\u0E27\u0E21 ${fmt2(next3)} \u0E21\u0E21.` });
+  }
+  return out;
+}
+async function syncAlerts(db, snapshot, { lineReady }) {
+  const now = new Date(snapshot.generated_at);
+  const prev = await fetch(`${db.url}/rest/v1/alert_state?select=*&or=(active.eq.true,clear_notified.eq.false)`, { headers: db.headers }).then((r) => {
+    if (!r.ok) throw new Error(`\u0E2D\u0E48\u0E32\u0E19 alert_state \u0E44\u0E21\u0E48\u0E2A\u0E33\u0E40\u0E23\u0E47\u0E08: HTTP ${r.status}`);
+    return r.json();
+  });
+  const prevBy = new Map(prev.map((a) => [a.key, a]));
+  const activeKeys = new Set(prev.filter((a) => a.active).map((a) => a.key));
+  const current = evaluate(snapshot, activeKeys);
+  const curKeys = new Set(current.map((c) => c.key));
+  const rows = [];
+  const raised = [];
+  const cleared = [];
+  for (const c of current) {
+    const p = prevBy.get(c.key);
+    const fresh = !p || !p.active;
+    const row = {
+      key: c.key,
+      level: c.level,
+      text: c.text,
+      first_seen: fresh ? now.toISOString() : p.first_seen,
+      last_seen: now.toISOString(),
+      active: true,
+      cleared_at: null,
+      notified_level: fresh ? null : p.notified_level,
+      notified_at: fresh ? null : p.notified_at,
+      clear_notified: fresh ? true : p.clear_notified
+    };
+    if (RANK[c.level] >= RANK.orange && (!row.notified_level || RANK[c.level] > RANK[row.notified_level])) {
+      raised.push({ ...c, escalated: !!row.notified_level });
+      if (lineReady) {
+        row.notified_level = c.level;
+        row.notified_at = now.toISOString();
+        row.clear_notified = false;
+      }
+    }
+    rows.push(row);
+  }
+  for (const p of prev) {
+    if (curKeys.has(p.key)) continue;
+    if (p.active) {
+      const goneMin = (now - new Date(p.last_seen)) / 6e4;
+      if (goneMin < CLEAR_AFTER_MIN) continue;
+      const row = { ...p, active: false, cleared_at: now.toISOString() };
+      if (p.notified_level) {
+        cleared.push(p);
+        if (lineReady) row.clear_notified = true;
+      } else row.clear_notified = true;
+      rows.push(row);
+    } else if (!p.clear_notified && p.notified_level) {
+      cleared.push(p);
+      if (lineReady) rows.push({ ...p, clear_notified: true });
+    }
+  }
+  return { rows, raised, cleared, active: current };
+}
+function formatLine({ raised, cleared, active }, snapshot, webUrl) {
+  if (!raised.length && !cleared.length) return null;
+  const t = new Date(snapshot.generated_at).toLocaleString("th-TH", { timeZone: "Asia/Bangkok", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+  const L = [`\u{1F30A} WaterWest \xB7 \u0E25\u0E38\u0E48\u0E21\u0E41\u0E21\u0E48\u0E01\u0E25\u0E2D\u0E07`, `${t} \u0E19.`];
+  const list = (items, fn) => {
+    const sorted = [...items].sort((a, b) => RANK[b.level] - RANK[a.level]);
+    for (const a of sorted.slice(0, 8)) L.push(fn(a));
+    if (sorted.length > 8) L.push(`\u2026\u0E41\u0E25\u0E30\u0E2D\u0E35\u0E01 ${sorted.length - 8} \u0E23\u0E32\u0E22\u0E01\u0E32\u0E23`);
+  };
+  if (raised.length) {
+    L.push("", "\u26A0\uFE0F \u0E41\u0E08\u0E49\u0E07\u0E40\u0E15\u0E37\u0E2D\u0E19\u0E43\u0E2B\u0E21\u0E48");
+    list(raised, (a) => `${LABEL[a.level]}${a.escalated ? " (\u0E23\u0E38\u0E19\u0E41\u0E23\u0E07\u0E02\u0E36\u0E49\u0E19)" : ""}: ${a.text}`);
+  }
+  if (cleared.length) {
+    L.push("", "\u2705 \u0E04\u0E25\u0E35\u0E48\u0E04\u0E25\u0E32\u0E22\u0E41\u0E25\u0E49\u0E27");
+    list(
+      cleared,
+      (a) => a.key.startsWith("bank:") ? `\u2022 ${a.text.slice(0, a.text.indexOf(")") + 1)} \u0E25\u0E14\u0E25\u0E07\u0E15\u0E48\u0E33\u0E01\u0E27\u0E48\u0E32\u0E15\u0E25\u0E34\u0E48\u0E07\u0E41\u0E25\u0E49\u0E27` : `\u2022 \u0E44\u0E21\u0E48\u0E40\u0E01\u0E34\u0E19\u0E40\u0E01\u0E13\u0E11\u0E4C\u0E41\u0E25\u0E49\u0E27: ${a.text}`
+    );
+  }
+  const stillOn = active.filter((a) => RANK[a.level] >= RANK.orange).length;
+  L.push("", `\u0E22\u0E31\u0E07\u0E40\u0E1D\u0E49\u0E32\u0E23\u0E30\u0E27\u0E31\u0E07\u0E2D\u0E22\u0E39\u0E48 ${stillOn} \u0E08\u0E38\u0E14`);
+  if (webUrl) L.push(`\u0E14\u0E39\u0E23\u0E32\u0E22\u0E25\u0E30\u0E40\u0E2D\u0E35\u0E22\u0E14: ${webUrl}`);
+  L.push("\u0E02\u0E49\u0E2D\u0E21\u0E39\u0E25\u0E1B\u0E23\u0E30\u0E01\u0E2D\u0E1A\u0E01\u0E32\u0E23\u0E15\u0E34\u0E14\u0E15\u0E32\u0E21 \u0E44\u0E21\u0E48\u0E43\u0E0A\u0E48\u0E1B\u0E23\u0E30\u0E01\u0E32\u0E28\u0E17\u0E32\u0E07\u0E01\u0E32\u0E23 \xB7 \u0E2A\u0E32\u0E22\u0E14\u0E48\u0E27\u0E19 \u0E1B\u0E20. 1784");
+  return L.join("\n").slice(0, 4900);
+}
+async function sendLine(token, text) {
+  const res = await fetch("https://api.line.me/v2/bot/message/broadcast", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ messages: [{ type: "text", text }] }),
+    signal: AbortSignal.timeout(2e4)
+  });
+  if (!res.ok) throw new Error(`LINE HTTP ${res.status} ${await res.text()}`);
+}
+
 // supabase/functions/ingest/index.ts
 var MIN_GAP_MIN = 8;
 function secretKey() {
@@ -457,5 +588,20 @@ Deno.serve(async () => {
   const snapshot = await collect();
   const saved = await store(snapshot, env);
   const failed = Object.entries(snapshot.sources).filter(([, v]) => v !== "ok").map(([k]) => k);
-  return json({ ok: true, generated_at: snapshot.generated_at, saved, failed });
+  const token = Deno.env.get("LINE_CHANNEL_ACCESS_TOKEN");
+  let alerts = {};
+  try {
+    const sync = await syncAlerts(db, snapshot, { lineReady: !!token });
+    const text = formatLine(sync, snapshot, Deno.env.get("WEB_URL"));
+    let line = "\u0E44\u0E21\u0E48\u0E21\u0E35\u0E40\u0E23\u0E37\u0E48\u0E2D\u0E07\u0E15\u0E49\u0E2D\u0E07\u0E41\u0E08\u0E49\u0E07";
+    if (text && token) {
+      await sendLine(token, text);
+      line = "\u0E2A\u0E48\u0E07\u0E41\u0E25\u0E49\u0E27";
+    } else if (text) line = "\u0E22\u0E31\u0E07\u0E44\u0E21\u0E48\u0E44\u0E14\u0E49\u0E15\u0E31\u0E49\u0E07\u0E04\u0E48\u0E32 LINE_CHANNEL_ACCESS_TOKEN";
+    await upsert(db, "alert_state", sync.rows);
+    alerts = { active: sync.active.length, raised: sync.raised.length, cleared: sync.cleared.length, line };
+  } catch (e) {
+    alerts = { error: String(e.message ?? e) };
+  }
+  return json({ ok: true, generated_at: snapshot.generated_at, saved, failed, alerts });
 });

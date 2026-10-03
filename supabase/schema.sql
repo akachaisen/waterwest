@@ -79,6 +79,21 @@ create table if not exists ingest_runs (
 );
 create index if not exists ingest_runs_time on ingest_runs (started_at desc);
 
+-- ขั้นที่ 6: สถานะเตือนภัย (1 แถวต่อเหตุ เช่น bank:K.55A, dam:200402) — ใช้กันการแจ้ง LINE ซ้ำ
+create table if not exists alert_state (
+  key            text primary key,
+  level          text not null,          -- yellow / orange / red
+  text           text not null,
+  first_seen     timestamptz not null,
+  last_seen      timestamptz not null,
+  active         boolean not null default true,
+  cleared_at     timestamptz,
+  notified_level text,                   -- ระดับสูงสุดที่แจ้ง LINE ไปแล้วในรอบเหตุการณ์นี้
+  notified_at    timestamptz,
+  clear_notified boolean not null default true
+);
+create index if not exists alert_state_active on alert_state (active, last_seen desc);
+
 -- ค่าล่าสุดของแต่ละสถานี (ใช้ในหน้าเว็บ)
 create or replace view latest_readings with (security_invoker = true) as
 select distinct on (r.station_code)
@@ -105,11 +120,12 @@ alter table dam_daily     enable row level security;
 alter table rain_forecast enable row level security;
 alter table sea_level     enable row level security;
 alter table ingest_runs   enable row level security;
+alter table alert_state   enable row level security;
 
 do $$
 declare t text;
 begin
-  foreach t in array array['stations','readings','dam_daily','rain_forecast','sea_level','ingest_runs'] loop
+  foreach t in array array['stations','readings','dam_daily','rain_forecast','sea_level','ingest_runs','alert_state'] loop
     if not exists (select 1 from pg_policies where tablename = t and policyname = 'public read') then
       execute format('create policy "public read" on %I for select using (true)', t);
     end if;

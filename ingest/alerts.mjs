@@ -1,0 +1,138 @@
+// ขั้นที่ 6: ระบบเตือนภัย — ประเมินกฎ → จดจำสถานะ (alert_state) → แจ้ง LINE เฉพาะเมื่อมีเหตุใหม่/รุนแรงขึ้น/คลี่คลาย
+// ใช้ร่วมกันระหว่าง Node และ Supabase Edge Function — ห้ามใช้ node:* ในไฟล์นี้
+
+const RANK = { yellow: 1, orange: 2, red: 3 };
+const LABEL = { red: '🔴 วิกฤต', orange: '🟠 เตือนภัย', yellow: '🟡 เฝ้าระวัง' };
+export const CLEAR_AFTER_MIN = 25; // ไม่พบซ้ำ 2 รอบ (15 นาที/รอบ) จึงถือว่าคลี่คลาย
+const BANK_CLEAR_M = -0.15; // สถานีที่ล้นตลิ่งอยู่แล้ว ต้องลดต่ำกว่าตลิ่ง 15 ซม. จึงเลิกเตือน (กันการแกว่ง)
+const fmt = (n, d = 0) => Number(n).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
+
+// กฎเตือนภัย → [{ key, level, text }]  (activeKeys = เหตุที่ยังเปิดอยู่จากรอบก่อน ใช้ทำ hysteresis)
+export function evaluate(snapshot, activeKeys = new Set()) {
+  const out = [];
+  const by = Object.fromEntries(snapshot.stations.map((s) => [s.code, s]));
+
+  for (const s of snapshot.stations) {
+    if (s.missing || s.stale || s.diff_bank === null || s.diff_bank === undefined) continue;
+    const key = `bank:${s.code}`;
+    const over = s.diff_bank > 0 || (activeKeys.has(key) && s.diff_bank > BANK_CLEAR_M);
+    if (!over) continue;
+    const rising = s.trend === 'เพิ่มขึ้น';
+    const level = s.key ? (rising ? 'red' : 'orange') : 'yellow';
+    const where = s.diff_bank > 0 ? `สูงกว่าตลิ่ง ${fmt(s.diff_bank, 2)} ม.` : `เพิ่งลดลงต่ำกว่าตลิ่ง (${fmt(s.diff_bank, 2)} ม.)`;
+    out.push({ key, level, text: `${s.name} (${s.code}) ${where}${rising ? ' และยังเพิ่มขึ้น' : ''}` });
+  }
+
+  const k37 = by['K.37'];
+  if (k37?.q && k37.capacity && k37.q > k37.capacity && !k37.stale)
+    out.push({ key: 'flow:K.37', level: 'orange', text: `แควน้อย K.37 ปริมาณ ${fmt(k37.q)} เกินความจุลำน้ำ ${fmt(k37.capacity)} ลบ.ม./วิ` });
+
+  const mk = snapshot.maeklong_release_proxy;
+  if (mk?.q > 3000) out.push({ key: 'flow:maeklong', level: 'red', text: `น้ำท้ายเขื่อนแม่กลอง (K.55A) ${fmt(mk.q)} ลบ.ม./วิ เกิน 3,000` });
+  else if (mk?.q > 2500) out.push({ key: 'flow:maeklong', level: 'orange', text: `น้ำท้ายเขื่อนแม่กลอง (K.55A) ${fmt(mk.q)} ลบ.ม./วิ เกิน 2,500` });
+
+  for (const d of snapshot.dams ?? []) {
+    if (d.missing) continue;
+    if (d.pct >= 100) out.push({ key: `dam:${d.id}`, level: 'red', text: `${d.name} เต็มระดับเก็บกัก (${fmt(d.pct, 1)}%) ต้องระบายเพิ่ม` });
+    else if (d.pct >= 98 && d.net_mcm_day > 0)
+      out.push({ key: `dam:${d.id}`, level: 'orange', text: `${d.name} ${fmt(d.pct, 1)}% น้ำเข้ามากกว่าระบาย ราว ${fmt(d.days_to_full ?? 0, 1)} วันจะเต็ม → อาจระบายเพิ่ม` });
+  }
+
+  for (const p of snapshot.rain ?? []) {
+    if (p.id === 'rbr') continue;
+    const next3 = p.days.slice(1, 4).reduce((a, b) => a + (b.mm ?? 0), 0);
+    if (next3 >= 50) out.push({ key: `rain:${p.id}`, level: 'yellow', text: `ฝนคาดการณ์${p.name} 3 วันรวม ${fmt(next3)} มม.` });
+  }
+  return out;
+}
+
+// อ่านสถานะเดิม → อัปเดต → คืนรายการที่ต้องแจ้ง
+export async function syncAlerts(db, snapshot, { lineReady }) {
+  const now = new Date(snapshot.generated_at);
+  const prev = await fetch(`${db.url}/rest/v1/alert_state?select=*&or=(active.eq.true,clear_notified.eq.false)`, { headers: db.headers }).then((r) => {
+    if (!r.ok) throw new Error(`อ่าน alert_state ไม่สำเร็จ: HTTP ${r.status}`);
+    return r.json();
+  });
+  const prevBy = new Map(prev.map((a) => [a.key, a]));
+  const activeKeys = new Set(prev.filter((a) => a.active).map((a) => a.key));
+  const current = evaluate(snapshot, activeKeys);
+  const curKeys = new Set(current.map((c) => c.key));
+
+  const rows = [];
+  const raised = [];
+  const cleared = [];
+
+  for (const c of current) {
+    const p = prevBy.get(c.key);
+    const fresh = !p || !p.active;
+    const row = {
+      key: c.key, level: c.level, text: c.text,
+      first_seen: fresh ? now.toISOString() : p.first_seen,
+      last_seen: now.toISOString(), active: true, cleared_at: null,
+      notified_level: fresh ? null : p.notified_level, notified_at: fresh ? null : p.notified_at,
+      clear_notified: fresh ? true : p.clear_notified,
+    };
+    // แจ้งเมื่อระดับเตือนภัยขึ้นไป (ส้ม/แดง) และยังไม่เคยแจ้งที่ระดับนี้หรือสูงกว่า
+    if (RANK[c.level] >= RANK.orange && (!row.notified_level || RANK[c.level] > RANK[row.notified_level])) {
+      raised.push({ ...c, escalated: !!row.notified_level });
+      if (lineReady) { row.notified_level = c.level; row.notified_at = now.toISOString(); row.clear_notified = false; }
+    }
+    rows.push(row);
+  }
+
+  for (const p of prev) {
+    if (curKeys.has(p.key)) continue;
+    if (p.active) {
+      const goneMin = (now - new Date(p.last_seen)) / 60000;
+      if (goneMin < CLEAR_AFTER_MIN) continue; // ยังไม่นานพอ — รอรอบหน้า
+      const row = { ...p, active: false, cleared_at: now.toISOString() };
+      if (p.notified_level) {
+        cleared.push(p);
+        if (lineReady) row.clear_notified = true;
+      } else row.clear_notified = true;
+      rows.push(row);
+    } else if (!p.clear_notified && p.notified_level) {
+      cleared.push(p); // คลี่คลายแล้วแต่ยังส่งไม่สำเร็จรอบก่อน
+      if (lineReady) rows.push({ ...p, clear_notified: true });
+    }
+  }
+  return { rows, raised, cleared, active: current };
+}
+
+export function formatLine({ raised, cleared, active }, snapshot, webUrl) {
+  if (!raised.length && !cleared.length) return null;
+  const t = new Date(snapshot.generated_at).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  const L = [`🌊 WaterWest · ลุ่มแม่กลอง`, `${t} น.`];
+  const list = (items, fn) => {
+    const sorted = [...items].sort((a, b) => RANK[b.level] - RANK[a.level]);
+    for (const a of sorted.slice(0, 8)) L.push(fn(a));
+    if (sorted.length > 8) L.push(`…และอีก ${sorted.length - 8} รายการ`);
+  };
+  if (raised.length) {
+    L.push('', '⚠️ แจ้งเตือนใหม่');
+    list(raised, (a) => `${LABEL[a.level]}${a.escalated ? ' (รุนแรงขึ้น)' : ''}: ${a.text}`);
+  }
+  if (cleared.length) {
+    L.push('', '✅ คลี่คลายแล้ว');
+    // ข้อความเดิมอาจเป็นค่าตอนกำลังลด จึงสรุปใหม่: ชื่อสถานี/เขื่อน + "กลับสู่ระดับปกติแล้ว"
+    list(cleared, (a) =>
+      a.key.startsWith('bank:') ? `• ${a.text.slice(0, a.text.indexOf(')') + 1)} ลดลงต่ำกว่าตลิ่งแล้ว` : `• ไม่เกินเกณฑ์แล้ว: ${a.text}`,
+    );
+  }
+  const stillOn = active.filter((a) => RANK[a.level] >= RANK.orange).length;
+  L.push('', `ยังเฝ้าระวังอยู่ ${stillOn} จุด`);
+  if (webUrl) L.push(`ดูรายละเอียด: ${webUrl}`);
+  L.push('ข้อมูลประกอบการติดตาม ไม่ใช่ประกาศทางการ · สายด่วน ปภ. 1784');
+  return L.join('\n').slice(0, 4900);
+}
+
+// LINE Messaging API — ส่งถึงทุกคนที่เพิ่มเพื่อน OA (broadcast)
+export async function sendLine(token, text) {
+  const res = await fetch('https://api.line.me/v2/bot/message/broadcast', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ messages: [{ type: 'text', text }] }),
+    signal: AbortSignal.timeout(20000),
+  });
+  if (!res.ok) throw new Error(`LINE HTTP ${res.status} ${await res.text()}`);
+}
