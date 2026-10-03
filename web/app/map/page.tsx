@@ -8,7 +8,10 @@ import { RiverMap, type MapPlace, type MapStation } from "@/components/RiverMap"
 export const revalidate = 300;
 export const metadata: Metadata = { title: "แผนที่" };
 
-export default async function MapPage() {
+type Props = { searchParams: Promise<{ radar?: string }> };
+
+export default async function MapPage({ searchParams }: Props) {
+  const { radar } = await searchParams;
   const s = await getSnapshot();
   const stations: MapStation[] = s.stations
     .filter((x) => x.lat !== null && x.lon !== null)
@@ -47,7 +50,7 @@ export default async function MapPage() {
         <li className="flex items-center gap-1.5"><span className="size-2.5 rounded-sm bg-accent" aria-hidden />เขื่อน</li>
         <li className="flex items-center gap-1.5"><span className="size-2.5 rounded-full border-2 border-orange" aria-hidden />พื้นที่ที่ติดตาม</li>
       </ul>
-      <RiverMap stations={stations} places={places} />
+      <RiverMap stations={stations} places={places} showRadar={radar === "1"} />
       <p className="text-xs text-muted">
         แผนที่ © ผู้ร่วมพัฒนา OpenStreetMap · ตำแหน่งสถานีจาก ThaiWater / กรมชลประทาน · หมุดเจดีย์หักอยู่ที่โบราณสถานเจดีย์หัก ไม่ใช่บ้านเลขที่
       </p>

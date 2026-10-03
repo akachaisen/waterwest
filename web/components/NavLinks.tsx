@@ -7,6 +7,7 @@ const LINKS = [
   { href: "/", label: "ภาพรวม" },
   { href: "/alerts", label: "เตือนภัย" },
   { href: "/river", label: "เส้นทางน้ำ" },
+  { href: "/forecast", label: "คาดการณ์" },
   { href: "/dams", label: "เขื่อน" },
   { href: "/stations", label: "สถานี" },
   { href: "/map", label: "แผนที่" },

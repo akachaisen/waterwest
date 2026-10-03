@@ -28,10 +28,23 @@ export const KM_FROM_MAEKLONG_DAM: Record<string, number> = {
 };
 export const MOUTH_KM = 122;
 
-// เวลาเดินทางของมวลน้ำ: เทียบจากตัวเลขทางการ เขื่อนแม่กลอง→ราชบุรี ~17 ชม. (70 กม.), →ปากอ่าว ~28 ชม. (122 กม.)
+// เวลาเดินทางของมวลน้ำจากเขื่อนแม่กลอง (ชม.) — จุดยึด:
+//  - บ้านโป่ง 32 กม. ~8 ชม. และโพธาราม 50 กม. ~11 ชม. : จากข้อมูลจริงเหตุการณ์ 30 ก.ย.–1 ต.ค. 2569 (ยอดน้ำ K.11A → K.55A → RAJ001)
+//  - ราชบุรี 70 กม. ~17 ชม. และปากอ่าว 122 กม. ~28 ชม. : ตัวเลขทางการ (กรมชลประทาน)
+export const TRAVEL_ANCHORS: [number, number][] = [
+  [0, 0],
+  [32, 8],
+  [50, 11],
+  [70, 17],
+  [MOUTH_KM, 28],
+];
+
 export function travelHours(km: number): number {
-  if (km <= 70) return (km / 70) * 17;
-  return 17 + ((km - 70) / (MOUTH_KM - 70)) * 11;
+  const a = TRAVEL_ANCHORS;
+  for (let i = 1; i < a.length; i++) {
+    if (km <= a[i][0]) return a[i - 1][1] + ((km - a[i - 1][0]) / (a[i][0] - a[i - 1][0])) * (a[i][1] - a[i - 1][1]);
+  }
+  return a[a.length - 1][1];
 }
 
 export const TRIBUTARY = new Set(["K.12"]);

@@ -48,7 +48,7 @@ function distanceKm(a: [number, number], b: [number, number]) {
   return 2 * R * Math.asin(Math.sqrt(s));
 }
 
-export function RiverMap({ stations, places }: { stations: MapStation[]; places: MapPlace[] }) {
+export function RiverMap({ stations, places, showRadar = false }: { stations: MapStation[]; places: MapPlace[]; showRadar?: boolean }) {
   const box = useRef<HTMLDivElement>(null);
   const mapRef = useRef<LMap | null>(null);
   const meRef = useRef<LayerGroup | null>(null);
@@ -121,7 +121,28 @@ export function RiverMap({ stations, places }: { stations: MapStation[]; places:
 
       stationLayer.addTo(map);
       placeLayer.addTo(map);
-      L.control.layers(undefined, { "สถานีวัดน้ำ": stationLayer, "เขื่อนและจุดสำคัญ": placeLayer }, { collapsed: true }).addTo(map);
+      const overlays: Record<string, L.Layer> = { "สถานีวัดน้ำ": stationLayer, "เขื่อนและจุดสำคัญ": placeLayer };
+
+      // เรดาร์ฝนล่าสุดจาก RainViewer (เปิดเองจากปุ่มชั้นข้อมูล หรือเปิดอัตโนมัติเมื่อ showRadar)
+      try {
+        const rv = await fetch("https://api.rainviewer.com/public/weather-maps.json").then((r) => r.json());
+        const frame = rv.radar?.past?.[rv.radar.past.length - 1];
+        if (frame) {
+          const when = new Date(frame.time * 1000).toLocaleTimeString("th-TH", { timeZone: "Asia/Bangkok", hour: "2-digit", minute: "2-digit" });
+          const radar = L.tileLayer(`${rv.host}${frame.path}/256/{z}/{x}/{y}/2/1_1.png`, {
+            opacity: 0.6,
+            maxNativeZoom: 7,
+            maxZoom: 18,
+            attribution: '<a href="https://www.rainviewer.com/" target="_blank" rel="noopener">RainViewer</a>',
+          });
+          overlays[`เรดาร์ฝน (${when} น.)`] = radar;
+          if (showRadar) radar.addTo(map);
+        }
+      } catch {
+        // ไม่มีเรดาร์ก็ยังใช้แผนที่ได้
+      }
+      if (cancelled) return;
+      L.control.layers(undefined, overlays, { collapsed: !showRadar }).addTo(map);
       const pts = [...stations.map((s) => [s.lat, s.lon] as [number, number]), ...places.map((p) => [p.lat, p.lon] as [number, number])];
       map.fitBounds(L.latLngBounds(pts), { padding: [20, 20] });
       meRef.current = L.layerGroup().addTo(map);
@@ -131,7 +152,7 @@ export function RiverMap({ stations, places }: { stations: MapStation[]; places:
       mapRef.current?.remove();
       mapRef.current = null;
     };
-  }, [stations, places]);
+  }, [stations, places, showRadar]);
 
   // ตำแหน่งของผู้ใช้ใช้ในเครื่องเท่านั้น ไม่ส่งไปที่ใด
   const locate = () => {
