@@ -4,8 +4,14 @@
   "private": true,
   "description": "WaterWest — ติดตามน้ำลุ่มแม่กลอง จากเขื่อนวชิราลงกรณ/ศรีนครินทร์ ถึงปากอ่าวสมุทรสงคราม",
   "type": "module",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
-    "snapshot": "node --env-file-if-exists=.env ingest/snapshot.mjs"
+    "snapshot": "node --env-file-if-exists=.env ingest/snapshot.mjs",
+    "build:function": "esbuild supabase/functions/ingest/index.ts --bundle --format=esm --platform=neutral --target=es2022 --outfile=supabase/functions/ingest/dist/index.js"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2"
   }
 }
