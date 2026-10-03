@@ -39,6 +39,14 @@ npm run snapshot
 - ตรวจคุณภาพข้อมูล: ตัดค่าที่เป็นไปไม่ได้, เทียบปริมาณกับ กฟผ., เวลาในอนาคต → บันทึกเหตุผลในคอลัมน์ `qc`
 - วิธีตั้งค่า: [docs/SETUP_ขั้นที่2.md](docs/SETUP_ขั้นที่2.md)
 
+## ตัวตั้งเวลาหลัก: Supabase Edge Function + Cron
+GitHub Actions cron บน repo นี้รันจริงแค่ทุก 4–5 ชม. จึงย้ายตัวตั้งเวลาหลักไปที่ Supabase (GitHub เก็บไว้เป็นตัวสำรอง)
+- `ingest/core.mjs` โค้ดรวบรวมข้อมูล ใช้ร่วมกันทั้ง Node และ Edge Function
+- `supabase/functions/ingest/index.ts` Edge Function — ไม่ต้องใช้คีย์เรียก (verify_jwt ปิด) แต่จะข้ามถ้ารอบล่าสุดยังไม่ถึง 8 นาที
+- สร้างไฟล์ deploy: `npm run build:function` → `supabase/functions/ingest/dist/index.js` (วางใน Dashboard → Edge Functions → ingest → Code)
+- `supabase/cron.sql` ตั้งเวลา Supabase Cron นาทีที่ 2, 17, 32, 47 ของทุกชั่วโมง
+- ข้อมูลเขื่อน: ถ้าเรียก API กรมชลฯ ไม่ได้ (Deno บน Supabase เชื่อมต่อเว็บ กรมชลฯ ไม่ได้) จะใช้ข้อมูลชุดเดียวกันจาก ThaiWater แทน
+
 ## ขั้นที่ 3: เว็บ (Next.js) — หน้าภาพรวม + ผังเส้นทางน้ำ
 อยู่ในโฟลเดอร์ `web/` (Next.js 16 + Tailwind 4, ฟอนต์ IBM Plex Sans Thai, รองรับมือถือและโหมดมืด)
 
