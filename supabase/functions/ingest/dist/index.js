@@ -31,8 +31,8 @@ var STATIONS = [
   { code: "PTT002", src: "swoc", seg: "F", name: "\u0E2A\u0E30\u0E1E\u0E32\u0E19\u0E02\u0E49\u0E32\u0E21\u0E04\u0E25\u0E2D\u0E07\u0E42\u0E04\u0E19" }
 ];
 var DAMS = [
-  { id: "200402", name: "\u0E40\u0E02\u0E37\u0E48\u0E2D\u0E19\u0E27\u0E0A\u0E34\u0E23\u0E32\u0E25\u0E07\u0E01\u0E23\u0E13", short: "VRK" },
-  { id: "200401", name: "\u0E40\u0E02\u0E37\u0E48\u0E2D\u0E19\u0E28\u0E23\u0E35\u0E19\u0E04\u0E23\u0E34\u0E19\u0E17\u0E23\u0E4C", short: "SNR" }
+  { id: "200402", twId: 15, name: "\u0E40\u0E02\u0E37\u0E48\u0E2D\u0E19\u0E27\u0E0A\u0E34\u0E23\u0E32\u0E25\u0E07\u0E01\u0E23\u0E13", short: "VRK" },
+  { id: "200401", twId: 14, name: "\u0E40\u0E02\u0E37\u0E48\u0E2D\u0E19\u0E28\u0E23\u0E35\u0E19\u0E04\u0E23\u0E34\u0E19\u0E17\u0E23\u0E4C", short: "SNR" }
 ];
 var RAIN_POINTS = [
   { id: "vrk", name: "\u0E40\u0E2B\u0E19\u0E37\u0E2D\u0E2D\u0E48\u0E32\u0E07\u0E27\u0E0A\u0E34\u0E23\u0E32\u0E25\u0E07\u0E01\u0E23\u0E13", lat: 14.95, lon: 98.55 },
@@ -129,11 +129,34 @@ async function fetchEgat() {
   if (out.size === 0) throw new Error("\u0E2D\u0E48\u0E32\u0E19\u0E15\u0E32\u0E23\u0E32\u0E07 \u0E01\u0E1F\u0E1C. \u0E44\u0E21\u0E48\u0E44\u0E14\u0E49 (\u0E23\u0E39\u0E1B\u0E41\u0E1A\u0E1A\u0E2B\u0E19\u0E49\u0E32\u0E40\u0E27\u0E47\u0E1A\u0E2D\u0E32\u0E08\u0E40\u0E1B\u0E25\u0E35\u0E48\u0E22\u0E19)");
   return out;
 }
-async function fetchRidDams() {
-  const j = await get("https://app.rid.go.th/reservoir/api/dam/public");
-  const out = /* @__PURE__ */ new Map();
-  for (const reg of j.data) for (const d of reg.dam) out.set(d.id, { ...d, date: j.date });
-  return out;
+async function fetchRidDams(dams = []) {
+  try {
+    const j = await get("https://app.rid.go.th/reservoir/api/dam/public");
+    const out = /* @__PURE__ */ new Map();
+    for (const reg of j.data) for (const d of reg.dam) out.set(d.id, { ...d, date: j.date, via: "RID" });
+    return out;
+  } catch (e) {
+    if (!dams.length) throw e;
+    const j = await get("https://api-v3.thaiwater.net/api/v1/thaiwater30/public/thailand_main", { timeout: 9e4 });
+    const out = /* @__PURE__ */ new Map();
+    for (const x of j.dam.data.data) {
+      const d = dams.find((k) => k.twId === x.dam?.id);
+      if (!d) continue;
+      out.set(d.id, {
+        id: d.id,
+        name: d.name,
+        date: x.dam_date,
+        via: "ThaiWater",
+        storage: x.dam.normal_storage,
+        volume: x.dam_storage,
+        percent_storage: x.dam_storage_percent,
+        inflow: x.dam_inflow,
+        outflow: x.dam_released
+      });
+    }
+    if (!out.size) throw e;
+    return out;
+  }
 }
 async function fetchRain(points) {
   const lat = points.map((p) => p.lat).join(",");
@@ -188,7 +211,7 @@ async function collect() {
     thaiwater: fetchThaiWater(),
     swoc: fetchSwoc(),
     egat: fetchEgat(),
-    ridDams: fetchRidDams(),
+    ridDams: fetchRidDams(DAMS),
     rain: fetchRain(RAIN_POINTS),
     sea: fetchSeaLevel(SEA_POINT),
     cctv: checkCctv(CCTV)

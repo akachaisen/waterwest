@@ -24,7 +24,7 @@ export async function collect() {
     thaiwater: fetchThaiWater(),
     swoc: fetchSwoc(),
     egat: fetchEgat(),
-    ridDams: fetchRidDams(),
+    ridDams: fetchRidDams(DAMS),
     rain: fetchRain(RAIN_POINTS),
     sea: fetchSeaLevel(SEA_POINT),
     cctv: checkCctv(CCTV),

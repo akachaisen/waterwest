@@ -36,8 +36,8 @@ export const STATIONS = [
 
 // เขื่อน (ข้อมูลจาก API อ่างเก็บน้ำ กรมชลฯ)
 export const DAMS = [
-  { id: '200402', name: 'เขื่อนวชิราลงกรณ', short: 'VRK' },
-  { id: '200401', name: 'เขื่อนศรีนครินทร์', short: 'SNR' },
+  { id: '200402', twId: 15, name: 'เขื่อนวชิราลงกรณ', short: 'VRK' },
+  { id: '200401', twId: 14, name: 'เขื่อนศรีนครินทร์', short: 'SNR' },
 ];
 
 // จุดพยากรณ์ฝน (Open-Meteo)

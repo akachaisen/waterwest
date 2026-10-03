@@ -94,11 +94,29 @@ export async function fetchEgat() {
 }
 
 // กรมชลประทาน — อ่างเก็บน้ำขนาดใหญ่ (หน่วย ล้าน ลบ.ม. / ล้าน ลบ.ม.ต่อวัน)
-export async function fetchRidDams() {
-  const j = await get('https://app.rid.go.th/reservoir/api/dam/public');
-  const out = new Map();
-  for (const reg of j.data) for (const d of reg.dam) out.set(d.id, { ...d, date: j.date });
-  return out;
+// สำรอง: ถ้าเรียก กรมชลฯ ไม่ได้ (เช่น Deno บน Supabase ไม่รองรับ cipher แบบ CBC ของเว็บ กรมชลฯ) ใช้ข้อมูลเขื่อนชุดเดียวกันจาก ThaiWater
+export async function fetchRidDams(dams = []) {
+  try {
+    const j = await get('https://app.rid.go.th/reservoir/api/dam/public');
+    const out = new Map();
+    for (const reg of j.data) for (const d of reg.dam) out.set(d.id, { ...d, date: j.date, via: 'RID' });
+    return out;
+  } catch (e) {
+    if (!dams.length) throw e;
+    const j = await get('https://api-v3.thaiwater.net/api/v1/thaiwater30/public/thailand_main', { timeout: 90000 });
+    const out = new Map();
+    for (const x of j.dam.data.data) {
+      const d = dams.find((k) => k.twId === x.dam?.id);
+      if (!d) continue;
+      out.set(d.id, {
+        id: d.id, name: d.name, date: x.dam_date, via: 'ThaiWater',
+        storage: x.dam.normal_storage, volume: x.dam_storage, percent_storage: x.dam_storage_percent,
+        inflow: x.dam_inflow, outflow: x.dam_released,
+      });
+    }
+    if (!out.size) throw e;
+    return out;
+  }
 }
 
 // Open-Meteo — ฝนรายวัน (เมื่อวาน + 3 วันข้างหน้า)
