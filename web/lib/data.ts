@@ -44,7 +44,17 @@ function toStation(r: RawStation, now: number): Station {
 export async function getSnapshot(): Promise<Snapshot> {
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_PUBLISHABLE_KEY;
-  return url && key ? fromSupabase(url.replace(/\/$/, ""), key) : fromFile();
+  try {
+    return url && key ? await fromSupabase(url.replace(/\/$/, ""), key) : await fromFile();
+  } catch (e) {
+    // ไม่มีข้อมูล/ฐานข้อมูลไม่ตอบ — แสดงหน้าว่างแทนการล้มทั้งเว็บ
+    console.error("getSnapshot:", e);
+    return emptySnapshot();
+  }
+}
+
+function emptySnapshot(): Snapshot {
+  return { origin: "file", generatedAt: new Date(0).toISOString(), stations: [], dams: [], maeklongQ: null, alerts: [], rain: [], seaPeak: null, sources: {} };
 }
 
 async function fromFile(): Promise<Snapshot> {
