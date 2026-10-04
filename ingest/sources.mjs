@@ -75,7 +75,7 @@ export async function fetchSwoc() {
   return out;
 }
 
-// กฟผ. — ตารางโทรมาตรลุ่มแม่กลอง (HTML) ใช้เอาความจุลำน้ำ + สถานีเขื่อนแม่กลอง
+// กฟผ. — ตารางโทรมาตรลุ่มน้ำแม่กลอง (HTML) ใช้เอาความจุลำน้ำ + สถานีเขื่อนแม่กลอง
 export async function fetchEgat() {
   const html = await get('https://water.egat.co.th/telemeter/schematic/index.php', { type: 'text' });
   const out = new Map();

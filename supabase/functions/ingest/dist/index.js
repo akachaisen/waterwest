@@ -529,7 +529,7 @@ async function syncAlerts(db, snapshot, { lineReady }) {
 function formatLine({ raised, cleared, active }, snapshot, webUrl) {
   if (!raised.length && !cleared.length) return null;
   const t = new Date(snapshot.generated_at).toLocaleString("th-TH", { timeZone: "Asia/Bangkok", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
-  const L = [`\u{1F30A} WaterWest \xB7 \u0E25\u0E38\u0E48\u0E21\u0E41\u0E21\u0E48\u0E01\u0E25\u0E2D\u0E07`, `${t} \u0E19.`];
+  const L = [`\u{1F30A} WaterWest \xB7 \u0E25\u0E38\u0E48\u0E21\u0E19\u0E49\u0E33\u0E41\u0E21\u0E48\u0E01\u0E25\u0E2D\u0E07`, `${t} \u0E19.`];
   const list = (items, fn) => {
     const sorted = [...items].sort((a, b) => RANK[b.level] - RANK[a.level]);
     for (const a of sorted.slice(0, 8)) L.push(fn(a));

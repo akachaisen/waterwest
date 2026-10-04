@@ -191,7 +191,7 @@ export function RiverMap({ stations, places, showRadar = false }: { stations: Ma
         <span className="text-xs text-muted">ตำแหน่งใช้คำนวณในเครื่องของคุณเท่านั้น ไม่ถูกส่งไปเก็บ</span>
       </div>
       {near && <p className="rounded-lg bg-surface-2 px-3 py-2 text-sm" role="status">{near}</p>}
-      <div ref={box} className="h-[70vh] min-h-[420px] w-full overflow-hidden rounded-2xl border border-border" aria-label="แผนที่สถานีวัดน้ำและเขื่อนลุ่มแม่กลอง" />
+      <div ref={box} className="h-[70vh] min-h-[420px] w-full overflow-hidden rounded-2xl border border-border" aria-label="แผนที่สถานีวัดน้ำและเขื่อนลุ่มน้ำแม่กลอง" />
     </div>
   );
 }

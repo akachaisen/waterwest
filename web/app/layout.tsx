@@ -11,8 +11,8 @@ const thai = IBM_Plex_Sans_Thai({
 });
 
 export const metadata: Metadata = {
-  title: { default: "WaterWest — ติดตามน้ำลุ่มแม่กลอง", template: "%s · WaterWest" },
-  description: "สถานการณ์น้ำลุ่มแม่กลอง ตั้งแต่เขื่อนวชิราลงกรณ ศรีนครินทร์ เขื่อนแม่กลอง ราชบุรี ถึงปากอ่าวสมุทรสงคราม",
+  title: { default: "WaterWest — ติดตามลุ่มน้ำแม่กลอง", template: "%s · WaterWest" },
+  description: "สถานการณ์น้ำในลุ่มน้ำแม่กลอง ตั้งแต่เขื่อนวชิราลงกรณ ศรีนครินทร์ เขื่อนแม่กลอง ราชบุรี ถึงปากอ่าวสมุทรสงคราม",
 };
 
 export const viewport: Viewport = {
@@ -38,7 +38,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               </span>
               <span className="leading-tight">
                 <span className="block text-sm font-bold">WaterWest</span>
-                <span className="hidden text-[0.7rem] text-muted sm:block">ติดตามน้ำลุ่มแม่กลอง</span>
+                <span className="hidden text-[0.7rem] text-muted sm:block">ติดตามลุ่มน้ำแม่กลอง</span>
               </span>
             </Link>
             <NavLinks />

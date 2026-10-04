@@ -72,7 +72,7 @@ export default async function DamsPage() {
       </Card>
 
       <Card>
-        <h2 className="mb-1 text-base font-semibold">ผังน้ำลุ่มแม่กลอง (กฟผ.)</h2>
+        <h2 className="mb-1 text-base font-semibold">ผังน้ำลุ่มน้ำแม่กลอง (กฟผ.)</h2>
         <p className="mb-3 text-xs text-muted">
           ภาพสดจาก{" "}
           <a href="https://water.egat.co.th/telemeter/schematic/index.php" target="_blank" rel="noopener noreferrer" className="text-accent underline">

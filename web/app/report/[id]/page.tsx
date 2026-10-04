@@ -76,7 +76,7 @@ export default async function ReportPage({ params, searchParams }: Props) {
           {/* หัวรายงาน */}
           <header className="flex items-start justify-between gap-4 border-b-2 border-accent pb-3">
             <div>
-              <p className="text-[13px] font-semibold text-accent">WaterWest · ติดตามน้ำลุ่มแม่กลอง</p>
+              <p className="text-[13px] font-semibold text-accent">WaterWest · ติดตามลุ่มน้ำแม่กลอง</p>
               <h2 className="text-[26px] font-bold leading-tight">รายงานสถานการณ์น้ำ</h2>
               <p className="text-[18px] font-semibold">{place.name}</p>
               <p className="text-[12px] text-muted">{place.sub}</p>
@@ -85,7 +85,7 @@ export default async function ReportPage({ params, searchParams }: Props) {
               <p className="text-muted">ข้อมูล ณ</p>
               <p className="text-[15px] font-bold">{dtLong(nowIso)}</p>
               <p className={`mt-1 inline-block rounded-md px-2 py-0.5 text-[12px] font-semibold ${levelBg(basin.level)} ${levelText(basin.level)}`}>
-                ลุ่มแม่กลอง: {LEVEL_TEXT[basin.level]}
+                ลุ่มน้ำแม่กลอง: {LEVEL_TEXT[basin.level]}
               </p>
             </div>
           </header>

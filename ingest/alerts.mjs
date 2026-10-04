@@ -102,7 +102,7 @@ export async function syncAlerts(db, snapshot, { lineReady }) {
 export function formatLine({ raised, cleared, active }, snapshot, webUrl) {
   if (!raised.length && !cleared.length) return null;
   const t = new Date(snapshot.generated_at).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-  const L = [`🌊 WaterWest · ลุ่มแม่กลอง`, `${t} น.`];
+  const L = [`🌊 WaterWest · ลุ่มน้ำแม่กลอง`, `${t} น.`];
   const list = (items, fn) => {
     const sorted = [...items].sort((a, b) => RANK[b.level] - RANK[a.level]);
     for (const a of sorted.slice(0, 8)) L.push(fn(a));

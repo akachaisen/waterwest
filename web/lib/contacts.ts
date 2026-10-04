@@ -24,7 +24,7 @@ export const OFFICIAL_LINKS: { name: string; url: string; note: string }[] = [
   { name: "กรมชลประทาน", url: "https://www.rid.go.th/", note: "ข่าวการระบายน้ำ" },
   { name: "อ่างเก็บน้ำขนาดใหญ่ (กรมชลประทาน)", url: "https://app.rid.go.th/reservoir/", note: "ข้อมูลเขื่อนรายวัน" },
   { name: "ระดับน้ำเทียบตลิ่ง (กรมชลประทาน)", url: "https://bigdata-swoc.rid.go.th/pier/all", note: "สถานีวัดน้ำทั่วประเทศ" },
-  { name: "ระบบโทรมาตรลุ่มแม่กลอง (กฟผ.)", url: "https://water.egat.co.th/telemeter/schematic/index.php", note: "ผังน้ำ เขื่อน สถานี" },
+  { name: "ระบบโทรมาตรลุ่มน้ำแม่กลอง (กฟผ.)", url: "https://water.egat.co.th/telemeter/schematic/index.php", note: "ผังน้ำ เขื่อน สถานี" },
   { name: "เขื่อนวชิราลงกรณ (กฟผ.)", url: "https://vrkdam.egat.co.th/index.php", note: "CCTV ประกาศของเขื่อน" },
   { name: "คลังข้อมูลน้ำแห่งชาติ (สสน.)", url: "https://www.thaiwater.net/", note: "ภาพรวมน้ำทั้งประเทศ" },
   { name: "กรมอุตุนิยมวิทยา", url: "https://www.tmd.go.th/", note: "พยากรณ์และประกาศเตือนภัยอากาศ" },
