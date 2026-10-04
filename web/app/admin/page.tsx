@@ -16,10 +16,16 @@ export default async function AdminPage() {
     return (
       <Card>
         <h1 className="text-xl font-bold">หลังบ้าน</h1>
-        <p className="mt-2 text-sm text-muted">
-          ยังไม่ได้ตั้งค่าบนเซิร์ฟเวอร์ — ต้องมี <code>ADMIN_PASSWORD</code> (อย่างน้อย 8 ตัว), <code>SUPABASE_URL</code> และ <code>SUPABASE_SECRET_KEY</code>
-          (ตั้งตอนนำเว็บขึ้นออนไลน์ ขั้นที่ 9)
-        </p>
+        <p className="mt-2 text-sm text-muted">ยังไม่ได้ตั้งค่าบนเซิร์ฟเวอร์ ตรวจรายการต่อไปนี้ (แสดงเฉพาะสถานะ ไม่แสดงค่า):</p>
+        <ul className="mt-2 space-y-1 text-sm">
+          {[
+            ["ADMIN_PASSWORD (อย่างน้อย 8 ตัวอักษร)", adminEnabled()],
+            ["SUPABASE_URL", !!process.env.SUPABASE_URL],
+            ["SUPABASE_SECRET_KEY", !!process.env.SUPABASE_SECRET_KEY],
+          ].map(([n, ok]) => (
+            <li key={String(n)}>{ok ? "✅" : "❌"} <code>{n}</code></li>
+          ))}
+        </ul>
       </Card>
     );
   }
