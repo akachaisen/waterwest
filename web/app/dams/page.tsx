@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { getSnapshot } from "@/lib/data";
+import { latestMaeklongRelease } from "@/lib/announcements";
 import { getDamHistory, getStationHistory } from "@/lib/history";
 import { fmt, fmtTime } from "@/lib/status";
 import type { Dam, Level } from "@/lib/types";
@@ -17,10 +18,11 @@ export default async function DamsPage() {
   const s = await getSnapshot();
   const vrk = s.dams.find((d) => d.id === "200402");
   const snr = s.dams.find((d) => d.id === "200401");
-  const [vrkH, snrH, k55] = await Promise.all([
+  const [vrkH, snrH, k55, official] = await Promise.all([
     getDamHistory("200402", 30).catch(() => []),
     getDamHistory("200401", 30).catch(() => []),
     getStationHistory("K.55A", 7).catch(() => null),
+    latestMaeklongRelease(),
   ]);
   const k55now = s.stations.find((x) => x.code === "K.55A");
 
@@ -42,6 +44,14 @@ export default async function DamsPage() {
           </div>
           {k55now && <Badge level={k55now.level}>{k55now.label}</Badge>}
         </div>
+        {official && (
+          <p className="mt-3 rounded-lg bg-surface-2 px-3 py-2 text-sm">
+            <b>ประกาศทางการ:</b> ระบาย {fmt(official.maeklong_cms)} ลบ.ม./วิ · มีผล {fmtTime(official.effective_at)}
+            {official.source_url && (
+              <a href={official.source_url} target="_blank" rel="noopener noreferrer nofollow" className="ml-1 text-accent underline">แหล่งข่าว</a>
+            )}
+          </p>
+        )}
         {k55now?.q != null && (
           <p className="tnum mt-3 text-2xl font-bold">
             {fmt(k55now.q)} <span className="text-sm font-normal text-muted">ลบ.ม./วิ · {fmtTime(k55now.time)}</span>

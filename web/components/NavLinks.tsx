@@ -13,6 +13,7 @@ const LINKS = [
   { href: "/stations", label: "สถานี" },
   { href: "/map", label: "แผนที่" },
   { href: "/cctv", label: "กล้อง" },
+  { href: "/news", label: "ประกาศ" },
 ];
 
 export function NavLinks() {

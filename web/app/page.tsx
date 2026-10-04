@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getSnapshot } from "@/lib/data";
+import { latestMaeklongRelease } from "@/lib/announcements";
 import { fmt, fmtSigned, fmtTime, LEVEL_TEXT, overall, worst } from "@/lib/status";
 import { SEGMENTS } from "@/lib/route";
 import type { Dam, Level, Station } from "@/lib/types";
@@ -25,7 +26,7 @@ const SEG_TEXT: Record<Level, string> = {
 };
 
 export default async function Home() {
-  const s = await getSnapshot();
+  const [s, official] = await Promise.all([getSnapshot(), latestMaeklongRelease()]);
   const by = Object.fromEntries(s.stations.map((x) => [x.code, x]));
   const status = overall(s.stations, s.dams, s.maeklongQ?.q ?? null);
   const vrk = s.dams.find((d) => d.id === "200402");
@@ -55,6 +56,17 @@ export default async function Home() {
           ดึงข้อมูลล่าสุด {fmtTime(s.generatedAt)} · {s.origin === "supabase" ? "จากฐานข้อมูล" : "จากไฟล์ในเครื่อง (โหมดทดสอบ)"}
         </p>
       </section>
+
+      {official && (
+        <Link href="/news" className="block rounded-2xl border border-border bg-surface p-4 hover:border-accent">
+          <p className="text-xs font-semibold text-accent">ประกาศทางการ · มีผล {fmtTime(official.effective_at)}</p>
+          <p className="mt-0.5 font-semibold">{official.title}</p>
+          <p className="tnum text-sm text-muted">
+            ระบายเขื่อนแม่กลอง {fmt(official.maeklong_cms)} ลบ.ม./วิ
+            {s.maeklongQ && ` · วัดได้จริงที่บ้านโป่ง ${fmt(s.maeklongQ.q)} ลบ.ม./วิ (${fmtTime(s.maeklongQ.time)})`}
+          </p>
+        </Link>
+      )}
 
       {/* ตัวเลขสำคัญ */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

@@ -9,6 +9,7 @@ import { fmt, fmtSigned, fmtTime, LEVEL_TEXT } from "@/lib/status";
 import type { Level } from "@/lib/types";
 import { Badge, Card, levelBg, levelDot, levelText, Measured, SectionTitle, Trend } from "@/components/ui";
 import { AreaActions } from "@/components/AreaActions";
+import { PROVINCE_DDPM } from "@/lib/contacts";
 
 export const revalidate = 300;
 
@@ -224,10 +225,15 @@ export default async function AreaPage({ params, searchParams }: Props) {
 
       <Card>
         <SectionTitle>เบอร์ฉุกเฉิน</SectionTitle>
-        <ul className="grid grid-cols-3 gap-2 text-sm">
-          {[["ปภ.", "1784"], ["การแพทย์ฉุกเฉิน", "1669"], ["เหตุด่วน", "191"]].map(([n, t]) => (
+        <ul className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
+          {[
+            ["ปภ.", "1784"],
+            ["การแพทย์ฉุกเฉิน", "1669"],
+            ["เหตุด่วน", "191"],
+            ...(place.tambon && PROVINCE_DDPM[place.tambon.p] ? [[`ปภ.จ.${place.tambon.p}`, PROVINCE_DDPM[place.tambon.p]!.tel]] : []),
+          ].map(([n, t]) => (
             <li key={t}>
-              <a href={`tel:${t}`} className="block rounded-xl border border-border px-3 py-2 hover:border-accent">
+              <a href={`tel:${t.replace(/[^0-9]/g, "")}`} className="block rounded-xl border border-border px-3 py-2 hover:border-accent">
                 <span className="block text-xs text-muted">{n}</span>
                 <span className="tnum font-semibold">{t}</span>
               </a>

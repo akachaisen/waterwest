@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# โฟลเดอร์ build ที่อาจเกิดซ้อน (เช่น web/web/.next จาก dev server)
+**/.next/
