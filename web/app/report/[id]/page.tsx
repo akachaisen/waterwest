@@ -211,7 +211,7 @@ export default async function ReportPage({ params, searchParams }: Props) {
             </p>
             <div className="mt-1.5 flex items-end justify-between">
               <p>อัปเดต {dtLong(nowIso)}</p>
-              <p className="text-[13px] font-bold text-text">เอก AI</p>
+              <p className="text-[13px] font-bold text-text">Hoysang Naja</p>
             </div>
           </footer>
         </article>
