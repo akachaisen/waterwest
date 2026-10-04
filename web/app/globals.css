@@ -91,3 +91,47 @@ body {
 .tnum {
   font-variant-numeric: tabular-nums;
 }
+
+/* รายงาน A4: ใช้โทนสว่างเสมอ (ดาวน์โหลด/พิมพ์แล้วอ่านง่าย) */
+.report-sheet {
+  color-scheme: light;
+  --bg: #ffffff;
+  --surface: #ffffff;
+  --surface-2: #f3f6fa;
+  --text: #0f172a;
+  --muted: #55657a;
+  --border: #dbe3ec;
+  --accent: #0b6aa8;
+  --river: #7cb8e3;
+  --red: #c8231a;
+  --red-bg: #fdeeed;
+  --orange: #c4560a;
+  --orange-bg: #fff2e5;
+  --yellow: #8a6a00;
+  --yellow-bg: #fdf6dc;
+  --green: #11773a;
+  --green-bg: #e8f6ed;
+  --unknown: #7b8ba0;
+  --unknown-bg: #eef2f6;
+  background: var(--bg);
+  color: var(--text);
+}
+
+@media print {
+  @page {
+    size: A4;
+    margin: 0;
+  }
+  body > header,
+  body > footer {
+    display: none !important;
+  }
+  main {
+    padding: 0 !important;
+    max-width: none !important;
+  }
+  .report-sheet {
+    box-shadow: none !important;
+    border: 0 !important;
+  }
+}

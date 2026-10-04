@@ -68,7 +68,12 @@ export default async function AreaPage({ params, searchParams }: Props) {
           <h1 className="text-xl font-bold sm:text-2xl">{place.name}</h1>
           <p className="text-sm text-muted">{place.sub}{place.approx ? ` · ${place.approx}` : ""}</p>
         </div>
-        <AreaActions href={href} name={place.name} sub={place.sub} />
+        <div className="flex flex-wrap items-center gap-2">
+          <AreaActions href={href} name={place.name} sub={place.sub} />
+          <Link href={href.replace("/area/", "/report/")} className="rounded-full border border-border px-4 py-2 text-sm font-semibold hover:border-accent">
+            🖼️ รายงานภาพ A4
+          </Link>
+        </div>
       </div>
 
       {/* สถานะพื้นที่ */}
