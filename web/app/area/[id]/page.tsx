@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { getSnapshot } from "@/lib/data";
 import { analyze, getElevation, getPointRain, resolvePlace, RISK_TYPE } from "@/lib/area";
 import { getSea, TOWN_TIDE_LAG_H, upcomingHighs } from "@/lib/forecast";
-import { OFFICIAL_RATCHABURI_H } from "@/lib/route";
+import { CALIBRATION, OFFICIAL_RATCHABURI_H } from "@/lib/route";
 import { fmt, fmtSigned, fmtTime, LEVEL_TEXT } from "@/lib/status";
 import type { Level } from "@/lib/types";
 import { Badge, Card, levelBg, levelDot, levelText, Measured, SectionTitle, Trend } from "@/components/ui";
@@ -171,7 +171,7 @@ export default async function AreaPage({ params, searchParams }: Props) {
             จะมาถึงพื้นที่นี้ราว <b>{hhmm(r.eta.at)}</b> <span className="text-muted">(+{fmt(r.eta.hours)} ชม.)</span>
           </p>
           <p className="mt-1 text-xs text-muted">
-            ประมาณจากความเร็วน้ำเหตุการณ์ 30 ก.ย.–1 ต.ค. 2569 · ตัวเลขทางการช่วงเขื่อน→ราชบุรีคือ ~{OFFICIAL_RATCHABURI_H} ชม. จึงควรเผื่อเวลาช้ากว่านี้ได้
+            ประมาณจากค่ากลางของยอดน้ำ {CALIBRATION.events} ครั้ง ({CALIBRATION.period}) · เขื่อนแม่กลอง→ราชบุรี ~{OFFICIAL_RATCHABURI_H} ชม. ตรงกับตัวเลขทางการ · เวลาจริงคลาดได้หลายชั่วโมง ควรเผื่อทั้งเร็วและช้ากว่านี้
           </p>
         </Card>
       )}

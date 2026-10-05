@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getSnapshot } from "@/lib/data";
 import { getStationHistory } from "@/lib/history";
+import { CALIBRATION, OFFICIAL_RATCHABURI_H, TRAVEL_STATS } from "@/lib/route";
 import { BASE_CODE, getRain7, getSea, tideClash, TOWN_TIDE_LAG_H, travelPlan, upcomingHighs } from "@/lib/forecast";
 import { fmt, fmtSigned, fmtTime } from "@/lib/status";
 import { Badge, Card, levelText, SectionTitle, Trend } from "@/components/ui";
@@ -111,7 +112,7 @@ export default async function ForecastPage() {
               </table>
             </div>
             <p className="mt-2 text-xs text-muted">
-              เวลาเดินทาง: เขื่อนแม่กลอง→บ้านโป่ง ~7 ชม. และ →โพธาราม ~10 ชม. จากข้อมูลจริง · →ราชบุรี ~13 ชม. (ตัวเลขทางการ ~17 ชม. — ควรเผื่อเวลา) · →ปากอ่าว ~28 ชม. ตามตัวเลขทางการ ·
+              เวลาเดินทาง: เขื่อนแม่กลอง→บ้านโป่ง ~10 ชม. และ →โพธาราม ~15 ชม. (ค่ากลางจากยอดน้ำ {CALIBRATION.events} ครั้ง) · →ราชบุรี ~{OFFICIAL_RATCHABURI_H} ชม. และ →ปากอ่าว ~28 ชม. ตามตัวเลขทางการ · เวลาจริงคลาดได้หลายชั่วโมง ·
               ต.เจดีย์หักไม่ติดแม่น้ำ ผลกระทบมาทางคลองที่ระบายลงแม่กลองไม่ทัน จึงใช้เวลาเดียวกับตัวเมืองราชบุรี
             </p>
           </>
@@ -196,7 +197,43 @@ export default async function ForecastPage() {
         )}
       </Card>
 
-      {/* หลักฐานเวลาเดินทาง */}
+      {/* หลักฐานเวลาเดินทาง: สถิติหลายเหตุการณ์ */}
+      <Card>
+        <SectionTitle hint={`ปรับเมื่อ ${CALIBRATION.date}`}>
+          เวลาเดินทางของน้ำจากยอดน้ำ {CALIBRATION.events} ครั้ง ({CALIBRATION.period})
+        </SectionTitle>
+        <table className="tnum w-full text-sm">
+          <thead>
+            <tr className="text-left text-xs text-muted">
+              <th className="py-1 font-medium">จุด (ระยะจากเขื่อนแม่กลอง)</th>
+              <th className="py-1 text-right font-medium">ค่ากลาง</th>
+              <th className="py-1 text-right font-medium">ช่วงที่พบบ่อย</th>
+              <th className="py-1 text-right font-medium">ทั้งหมด</th>
+            </tr>
+          </thead>
+          <tbody>
+            {TRAVEL_STATS.map((t) => (
+              <tr key={t.name} className="border-t border-border">
+                <td className="py-1.5">{t.name} <span className="text-xs text-muted">{t.km} กม.</span></td>
+                <td className="py-1.5 text-right font-semibold">{t.median} ชม.</td>
+                <td className="py-1.5 text-right">{t.range} ชม.</td>
+                <td className="py-1.5 text-right text-muted">{t.all} ชม.</td>
+              </tr>
+            ))}
+            <tr className="border-t border-border">
+              <td className="py-1.5">ตัวเมืองราชบุรี (K.2B) <span className="text-xs text-muted">83 กม.</span></td>
+              <td className="py-1.5 text-right font-semibold">{OFFICIAL_RATCHABURI_H} ชม.</td>
+              <td className="py-1.5 text-right text-muted" colSpan={2}>ตัวเลขทางการ</td>
+            </tr>
+          </tbody>
+        </table>
+        <p className="mt-2 text-xs text-muted">
+          นับจากยอดน้ำที่ท่าม่วง (K.11A ท้ายเขื่อนแม่กลอง) ถึงยอดน้ำที่สถานีท้ายน้ำ · ข้อมูลรายชั่วโมง ThaiWater · ราชบุรีใช้ตัวเลขทางการเพราะ K.2B ไม่มีใน ThaiWater
+          (ระบบเก็บข้อมูล K.2B เองตั้งแต่ ต.ค. 2569 จะวัดได้เมื่อมีเหตุการณ์น้ำขึ้นครั้งถัดไป)
+        </p>
+      </Card>
+
+      {/* หลักฐานเวลาเดินทาง: เหตุการณ์ใหญ่ล่าสุด */}
       <Card>
         <SectionTitle hint="ข้อมูลรายชั่วโมง ThaiWater">เวลาเดินทางของน้ำจากเหตุการณ์จริง (30 ก.ย.–1 ต.ค. 2569)</SectionTitle>
         <table className="tnum w-full text-sm">
@@ -218,7 +255,7 @@ export default async function ForecastPage() {
           </tbody>
         </table>
         <p className="mt-2 text-xs text-muted">
-          ยอดน้ำแบนกว้างจึงระบุเวลาแน่นอนยาก ช่วงบ้านโป่ง→โพธาราม สอดคล้องกันมาก (r = 0.92) · ช่วงโพธาราม→ราชบุรีจะปรับเมื่อสถานี K.2B มีข้อมูลสะสมพอ
+          ยอดน้ำแบนกว้างจึงระบุเวลาแน่นอนยาก · ช่วงโพธาราม→ราชบุรีจะปรับเมื่อสถานี K.2B มีข้อมูลสะสมพอ
         </p>
       </Card>
     </div>
