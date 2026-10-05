@@ -120,6 +120,16 @@ create table if not exists line_quota (
 );
 alter table line_quota enable row level security;
 
+-- สรุปสถานการณ์รายวัน (ส่ง LINE 06:00 น. วันละครั้ง) · อ่านได้เฉพาะ secret key
+create table if not exists daily_summary (
+  date     date primary key,             -- วันที่ตามเวลาไทย
+  status   text not null,                -- sent / skipped
+  sent_at  timestamptz,
+  note     text,                         -- เหตุผลที่ข้าม (เช่น โควตาใกล้หมด)
+  text     text                          -- ข้อความที่ส่ง
+);
+alter table daily_summary enable row level security;
+
 -- ค่าล่าสุดของแต่ละสถานี (ใช้ในหน้าเว็บ)
 create or replace view latest_readings with (security_invoker = true) as
 select distinct on (r.station_code)

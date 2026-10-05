@@ -7,6 +7,7 @@ import { dbConfig, store, upsert } from "../../../ingest/store.mjs";
 import { formatLine, sendLine, syncAlerts } from "../../../ingest/alerts.mjs";
 import { checkHealth, formatHealth, pushLine } from "../../../ingest/health.mjs";
 import { syncQuota } from "../../../ingest/quota.mjs";
+import { maybeSendDaily } from "../../../ingest/daily.mjs";
 
 const MIN_GAP_MIN = 8;
 
@@ -53,8 +54,10 @@ Deno.serve(async () => {
   // ขั้นที่ 6: เตือนภัย + LINE (ส่งเฉพาะเหตุใหม่/รุนแรงขึ้น/คลี่คลาย)
   const token = Deno.env.get("LINE_CHANNEL_ACCESS_TOKEN");
   let alerts: Record<string, unknown> = {};
+  let active: { key: string; level: string; text: string }[] = [];
   try {
     const sync = await syncAlerts(db, snapshot, { lineReady: !!token });
+    active = sync.active;
     const text = formatLine(sync, snapshot, Deno.env.get("WEB_URL"));
     let line = "ไม่มีเรื่องต้องแจ้ง";
     if (text && token) {
@@ -91,5 +94,17 @@ Deno.serve(async () => {
       quota = { error: String((e as Error).message ?? e) };
     }
   }
-  return json({ ok: true, generated_at: snapshot.generated_at, saved, failed, alerts, health, quota });
+  // สรุปสถานการณ์รายวัน 06:00 น. (broadcast วันละครั้ง)
+  let daily: Record<string, unknown> = {};
+  try {
+    const webUrl = Deno.env.get("WEB_URL");
+    daily = await maybeSendDaily(db, snapshot, active, {
+      token,
+      webUrl: webUrl ? new URL("/", webUrl).href : undefined,
+      enabled: Deno.env.get("DAILY_SUMMARY") !== "off",
+    });
+  } catch (e) {
+    daily = { error: String((e as Error).message ?? e) };
+  }
+  return json({ ok: true, generated_at: snapshot.generated_at, saved, failed, alerts, health, quota, daily });
 });

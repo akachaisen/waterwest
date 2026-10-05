@@ -706,6 +706,105 @@ async function syncQuota(db, token, adminId, now = /* @__PURE__ */ new Date()) {
   return { used: row.used, limit: row.quota, reach: row.reach, level, sent };
 }
 
+// ingest/daily.mjs
+var SEND_FROM_H = 6;
+var SEND_UNTIL_H = 9;
+var RESERVE_ALERTS = 3;
+var LEVEL = { red: "\u{1F534} \u0E27\u0E34\u0E01\u0E24\u0E15", orange: "\u{1F7E0} \u0E40\u0E15\u0E37\u0E2D\u0E19\u0E20\u0E31\u0E22", yellow: "\u{1F7E1} \u0E40\u0E1D\u0E49\u0E32\u0E23\u0E30\u0E27\u0E31\u0E07" };
+var RANK2 = { yellow: 1, orange: 2, red: 3 };
+var KEY_STATIONS = [
+  ["K.37", "\u0E41\u0E04\u0E27\u0E19\u0E49\u0E2D\u0E22 \u0E1A\u0E49\u0E32\u0E19\u0E27\u0E31\u0E07\u0E40\u0E22\u0E47\u0E19"],
+  ["K.35A", "\u0E41\u0E04\u0E27\u0E43\u0E2B\u0E0D\u0E48 \u0E1A\u0E49\u0E32\u0E19\u0E2B\u0E19\u0E2D\u0E07\u0E1A\u0E31\u0E27"],
+  ["K.55A", "\u0E1A\u0E49\u0E32\u0E19\u0E42\u0E1B\u0E48\u0E07"],
+  ["RAJ001", "\u0E42\u0E1E\u0E18\u0E32\u0E23\u0E32\u0E21"],
+  ["K.2B", "\u0E15\u0E31\u0E27\u0E40\u0E21\u0E37\u0E2D\u0E07\u0E23\u0E32\u0E0A\u0E1A\u0E38\u0E23\u0E35"],
+  ["K.57", "\u0E1A\u0E32\u0E07\u0E04\u0E19\u0E17\u0E35"]
+];
+var fmt3 = (n, d = 0) => Number(n).toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
+var thai = (d) => new Date(d.getTime() + 7 * 36e5);
+var thaiDate = (d) => thai(d).toISOString().slice(0, 10);
+var hm = (iso, now) => {
+  if (!iso) return "-";
+  const d = new Date(iso);
+  const t = d.toLocaleTimeString("th-TH", { timeZone: "Asia/Bangkok", hour: "2-digit", minute: "2-digit" });
+  return thaiDate(d) === thaiDate(now) ? `${t} \u0E19.` : `${d.toLocaleDateString("th-TH", { timeZone: "Asia/Bangkok", day: "numeric", month: "short" })} ${t} \u0E19.`;
+};
+var arrow = (trend) => trend === "\u0E40\u0E1E\u0E34\u0E48\u0E21\u0E02\u0E36\u0E49\u0E19" ? " \u2191" : trend === "\u0E25\u0E14\u0E25\u0E07" ? " \u2193" : trend === "\u0E17\u0E23\u0E07\u0E15\u0E31\u0E27" ? " \u2192" : "";
+function formatDaily(snapshot, active, webUrl, now = new Date(snapshot.generated_at)) {
+  const day = now.toLocaleDateString("th-TH", { timeZone: "Asia/Bangkok", weekday: "short", day: "numeric", month: "short", year: "numeric" });
+  const worst = active.reduce((w, a) => RANK2[a.level] > (RANK2[w] ?? 0) ? a.level : w, null);
+  const watch = active.filter((a) => RANK2[a.level] >= RANK2.orange).length;
+  const L = [`\u{1F305} WaterWest \xB7 \u0E2A\u0E23\u0E38\u0E1B\u0E40\u0E0A\u0E49\u0E32 ${day}`, `\u0E20\u0E32\u0E1E\u0E23\u0E27\u0E21\u0E25\u0E38\u0E48\u0E21\u0E19\u0E49\u0E33\u0E41\u0E21\u0E48\u0E01\u0E25\u0E2D\u0E07: ${worst ? `${LEVEL[worst]}${watch ? ` (${watch} \u0E08\u0E38\u0E14)` : ""}` : "\u{1F7E2} \u0E1B\u0E01\u0E15\u0E34"}`];
+  const by = Object.fromEntries(snapshot.stations.map((s) => [s.code, s]));
+  L.push("", "\u{1F4A7} \u0E23\u0E30\u0E14\u0E31\u0E1A\u0E19\u0E49\u0E33 (\u0E40\u0E27\u0E25\u0E32\u0E17\u0E35\u0E48\u0E27\u0E31\u0E14)");
+  for (const [code, name] of KEY_STATIONS) {
+    const s = by[code];
+    if (!s || s.missing) {
+      L.push(`\u2022 ${name}: \u0E44\u0E21\u0E48\u0E21\u0E35\u0E02\u0E49\u0E2D\u0E21\u0E39\u0E25`);
+      continue;
+    }
+    const bank = s.diff_bank == null ? "" : s.diff_bank > 0 ? `\u0E2A\u0E39\u0E07\u0E01\u0E27\u0E48\u0E32\u0E15\u0E25\u0E34\u0E48\u0E07 ${fmt3(s.diff_bank, 2)} \u0E21.` : `\u0E15\u0E48\u0E33\u0E01\u0E27\u0E48\u0E32\u0E15\u0E25\u0E34\u0E48\u0E07 ${fmt3(-s.diff_bank, 2)} \u0E21.`;
+    const q = s.q ? ` \xB7 ${fmt3(s.q)} \u0E25\u0E1A.\u0E21./\u0E27\u0E34` : "";
+    L.push(`\u2022 ${name}: ${bank || "\u0E44\u0E21\u0E48\u0E21\u0E35\u0E04\u0E48\u0E32\u0E40\u0E17\u0E35\u0E22\u0E1A\u0E15\u0E25\u0E34\u0E48\u0E07"}${q}${arrow(s.trend)} (${hm(s.time, now)}${s.stale ? " \u26A0\uFE0F\u0E02\u0E49\u0E2D\u0E21\u0E39\u0E25\u0E40\u0E01\u0E48\u0E32" : ""})`);
+  }
+  const dams = (snapshot.dams ?? []).filter((d) => !d.missing);
+  if (dams.length) {
+    const dDate = dams[0].date ? (/* @__PURE__ */ new Date(`${dams[0].date}T00:00:00+07:00`)).toLocaleDateString("th-TH", { timeZone: "Asia/Bangkok", day: "numeric", month: "short" }) : "-";
+    L.push("", `\u{1F3DE} \u0E40\u0E02\u0E37\u0E48\u0E2D\u0E19 (\u0E02\u0E49\u0E2D\u0E21\u0E39\u0E25\u0E27\u0E31\u0E19\u0E17\u0E35\u0E48 ${dDate})`);
+    for (const d of dams) L.push(`\u2022 ${d.name.replace("\u0E40\u0E02\u0E37\u0E48\u0E2D\u0E19", "")} ${fmt3(d.pct, 1)}% \xB7 \u0E40\u0E02\u0E49\u0E32 ${fmt3(d.inflow_cms)} / \u0E23\u0E30\u0E1A\u0E32\u0E22 ${fmt3(d.outflow_cms)} \u0E25\u0E1A.\u0E21./\u0E27\u0E34`);
+  }
+  const rain = (snapshot.rain ?? []).filter((p) => p.days?.length);
+  if (rain.length) {
+    L.push("", `\u{1F327} \u0E1D\u0E19\u0E04\u0E32\u0E14\u0E01\u0E32\u0E23\u0E13\u0E4C 3 \u0E27\u0E31\u0E19 (Open-Meteo \u0E13 ${hm(snapshot.generated_at, now)})`);
+    for (const p of rain) L.push(`\u2022 ${p.name}: ${fmt3(p.days.slice(1, 4).reduce((a, b) => a + (b.mm ?? 0), 0))} \u0E21\u0E21.`);
+  }
+  const sea = snapshot.sea?.next24h ?? [];
+  const highs = sea.filter((r, i) => i > 0 && i < sea.length - 1 && r.m >= sea[i - 1].m && r.m > sea[i + 1].m);
+  if (highs.length) L.push("", `\u{1F30A} \u0E19\u0E49\u0E33\u0E17\u0E30\u0E40\u0E25\u0E02\u0E36\u0E49\u0E19\u0E2A\u0E39\u0E07\u0E17\u0E35\u0E48\u0E1B\u0E32\u0E01\u0E41\u0E21\u0E48\u0E01\u0E25\u0E2D\u0E07 (\u0E41\u0E1A\u0E1A\u0E08\u0E33\u0E25\u0E2D\u0E07): ${highs.slice(0, 2).map((r) => `${hm(r.time, now)} ${fmt3(r.m, 2)} \u0E21.`).join(", ")}`);
+  const top = [...active].filter((a) => RANK2[a.level] >= RANK2.orange).sort((a, b) => RANK2[b.level] - RANK2[a.level]).slice(0, 3);
+  if (top.length) {
+    L.push("", "\u26A0\uFE0F \u0E08\u0E38\u0E14\u0E17\u0E35\u0E48\u0E15\u0E49\u0E2D\u0E07\u0E23\u0E30\u0E27\u0E31\u0E07");
+    for (const a of top) L.push(`\u2022 ${LEVEL[a.level]}: ${a.text}`);
+  }
+  if (webUrl) L.push("", `\u0E14\u0E39\u0E23\u0E32\u0E22\u0E25\u0E30\u0E40\u0E2D\u0E35\u0E22\u0E14: ${webUrl}`);
+  L.push("\u0E02\u0E49\u0E2D\u0E21\u0E39\u0E25\u0E1B\u0E23\u0E30\u0E01\u0E2D\u0E1A\u0E01\u0E32\u0E23\u0E15\u0E34\u0E14\u0E15\u0E32\u0E21 \u0E44\u0E21\u0E48\u0E43\u0E0A\u0E48\u0E1B\u0E23\u0E30\u0E01\u0E32\u0E28\u0E17\u0E32\u0E07\u0E01\u0E32\u0E23 \xB7 \u0E09\u0E38\u0E01\u0E40\u0E09\u0E34\u0E19\u0E42\u0E17\u0E23 1784");
+  L.push(`\u0E2D\u0E31\u0E1B\u0E40\u0E14\u0E15 ${hm(snapshot.generated_at, now)} \xB7 Hoysang Naja`);
+  return L.join("\n").slice(0, 4900);
+}
+async function rest(db, path, init) {
+  const res = await fetch(`${db.url}/rest/v1/${path}`, { ...init, headers: { ...db.headers, ...init?.headers ?? {} } });
+  if (!res.ok) throw new Error(`${path.split("?")[0]} HTTP ${res.status} ${await res.text()}`);
+  return init?.method === "POST" ? null : res.json();
+}
+async function maybeSendDaily(db, snapshot, active, { token, webUrl, enabled = true }) {
+  const now = new Date(snapshot.generated_at);
+  const h = thai(now).getUTCHours();
+  if (!enabled) return { status: "\u0E1B\u0E34\u0E14\u0E2D\u0E22\u0E39\u0E48 (DAILY_SUMMARY=off)" };
+  if (h < SEND_FROM_H || h >= SEND_UNTIL_H) return { status: "\u0E44\u0E21\u0E48\u0E43\u0E0A\u0E48\u0E0A\u0E48\u0E27\u0E07\u0E40\u0E27\u0E25\u0E32\u0E2A\u0E48\u0E07" };
+  const date = thaiDate(now);
+  const done = await rest(db, `daily_summary?select=status&date=eq.${date}`);
+  if (done.length) return { status: `\u0E27\u0E31\u0E19\u0E19\u0E35\u0E49${done[0].status === "sent" ? "\u0E2A\u0E48\u0E07\u0E41\u0E25\u0E49\u0E27" : "\u0E02\u0E49\u0E32\u0E21\u0E41\u0E25\u0E49\u0E27"}` };
+  if (!token) return { status: "\u0E22\u0E31\u0E07\u0E44\u0E21\u0E48\u0E44\u0E14\u0E49\u0E15\u0E31\u0E49\u0E07\u0E04\u0E48\u0E32 LINE_CHANNEL_ACCESS_TOKEN" };
+  const save = (row) => rest(db, "daily_summary?on_conflict=date", {
+    method: "POST",
+    headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+    body: JSON.stringify({ date, ...row })
+  });
+  const [q] = await rest(db, `line_quota?select=*&month=eq.${thaiMonth(now)}`);
+  if (q?.quota != null) {
+    const per = Math.max(1, q.reach ?? 1);
+    if (q.warned >= 80 || q.quota - q.used - per < per * RESERVE_ALERTS) {
+      const note = `\u0E42\u0E04\u0E27\u0E15\u0E32\u0E40\u0E2B\u0E25\u0E37\u0E2D ${q.quota - q.used} \u0E02\u0E49\u0E2D\u0E04\u0E27\u0E32\u0E21 (\u0E1C\u0E39\u0E49\u0E23\u0E31\u0E1A ${per} \u0E04\u0E19) \u2014 \u0E40\u0E01\u0E47\u0E1A\u0E44\u0E27\u0E49\u0E2A\u0E48\u0E07\u0E41\u0E08\u0E49\u0E07\u0E40\u0E15\u0E37\u0E2D\u0E19\u0E20\u0E31\u0E22`;
+      await save({ status: "skipped", note });
+      return { status: "\u0E02\u0E49\u0E32\u0E21", note };
+    }
+  }
+  const text = formatDaily(snapshot, active, webUrl, now);
+  await sendLine(token, text);
+  await save({ status: "sent", sent_at: now.toISOString(), text });
+  return { status: "\u0E2A\u0E48\u0E07\u0E41\u0E25\u0E49\u0E27" };
+}
+
 // supabase/functions/ingest/index.ts
 var MIN_GAP_MIN = 8;
 function secretKey() {
@@ -734,8 +833,10 @@ Deno.serve(async () => {
   const failed = Object.entries(snapshot.sources).filter(([, v]) => v !== "ok").map(([k]) => k);
   const token = Deno.env.get("LINE_CHANNEL_ACCESS_TOKEN");
   let alerts = {};
+  let active = [];
   try {
     const sync = await syncAlerts(db, snapshot, { lineReady: !!token });
+    active = sync.active;
     const text = formatLine(sync, snapshot, Deno.env.get("WEB_URL"));
     let line = "\u0E44\u0E21\u0E48\u0E21\u0E35\u0E40\u0E23\u0E37\u0E48\u0E2D\u0E07\u0E15\u0E49\u0E2D\u0E07\u0E41\u0E08\u0E49\u0E07";
     if (text && token) {
@@ -769,5 +870,16 @@ Deno.serve(async () => {
       quota = { error: String(e.message ?? e) };
     }
   }
-  return json({ ok: true, generated_at: snapshot.generated_at, saved, failed, alerts, health, quota });
+  let daily = {};
+  try {
+    const webUrl = Deno.env.get("WEB_URL");
+    daily = await maybeSendDaily(db, snapshot, active, {
+      token,
+      webUrl: webUrl ? new URL("/", webUrl).href : void 0,
+      enabled: Deno.env.get("DAILY_SUMMARY") !== "off"
+    });
+  } catch (e) {
+    daily = { error: String(e.message ?? e) };
+  }
+  return json({ ok: true, generated_at: snapshot.generated_at, saved, failed, alerts, health, quota, daily });
 });
