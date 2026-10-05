@@ -3,7 +3,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getSnapshot } from "@/lib/data";
 import { analyze, getElevation, getPointRain, resolvePlace, RISK_TYPE } from "@/lib/area";
-import { getSea, TOWN_TIDE_LAG_H, upcomingHighs } from "@/lib/forecast";
+import { getSea } from "@/lib/forecast";
+import { bankText, TIDE_STATION, townHighs } from "@/lib/tide";
 import { CALIBRATION, OFFICIAL_RATCHABURI_H } from "@/lib/route";
 import { fmt, fmtSigned, fmtTime, LEVEL_TEXT } from "@/lib/status";
 import type { Level } from "@/lib/types";
@@ -56,7 +57,7 @@ export default async function AreaPage({ params, searchParams }: Props) {
   const href = id === "pin" ? `/area/pin?lat=${place.lat.toFixed(2)}&lon=${place.lon.toFixed(2)}` : `/area/${place.key}`;
   const rain3 = rain.slice(0, 3).reduce((a, d) => a + (d.mm ?? 0), 0);
   const maxRain = Math.max(1, ...rain.map((d) => d.mm ?? 0));
-  const highs = sea ? upcomingHighs(sea, 3) : [];
+  const { highs, fromStation } = sea ? await townHighs(sea, 3) : { highs: [], fromStation: false };
 
   return (
     <div className="space-y-5">
@@ -179,13 +180,14 @@ export default async function AreaPage({ params, searchParams }: Props) {
       {/* น้ำทะเลหนุน */}
       {r.tide && (
         <Card>
-          <SectionTitle hint="แบบจำลอง ไม่ใช่ตารางน้ำทางการ">น้ำทะเลหนุน</SectionTitle>
+          <SectionTitle hint={fromStation ? `ปรับจากค่าวัดจริง ${TIDE_STATION.code} · ไม่ใช่ตารางน้ำทางการ` : "แบบจำลอง ไม่ใช่ตารางน้ำทางการ"}>น้ำทะเลหนุน</SectionTitle>
           {highs.length ? (
             <ul className="grid gap-2 sm:grid-cols-3">
               {highs.map((t) => (
                 <li key={t.time} className="rounded-xl border border-border p-2.5 text-sm">
                   <span className="block text-xs text-muted">น้ำขึ้นสูง (ตัวเมืองสมุทรสงคราม)</span>
-                  <b>{hhmm(new Date(new Date(t.time).getTime() + TOWN_TIDE_LAG_H * 3600e3).toISOString())}</b>
+                  <b>{hhmm(t.time)}</b>
+                  {t.diff !== null && <span className="tnum block text-xs text-muted">{bankText(t.diff)} (±0.2 ม.)</span>}
                 </li>
               ))}
             </ul>

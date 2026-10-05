@@ -468,6 +468,12 @@ function evaluate(snapshot, activeKeys = /* @__PURE__ */ new Set()) {
     if (g.max.mm >= 90) out.push({ key: `rainobs:${g.id}`, level: "yellow", text: `\u0E1D\u0E19\u0E27\u0E31\u0E14\u0E44\u0E14\u0E49 24 \u0E0A\u0E21. ${g.name} \u0E2A\u0E39\u0E07\u0E2A\u0E38\u0E14 ${fmt2(g.max.mm)} \u0E21\u0E21. (${g.max.name} \u0E2D.${g.max.amphoe})` });
     else if (g.heavy >= 3) out.push({ key: `rainobs:${g.id}`, level: "yellow", text: `\u0E1D\u0E19\u0E2B\u0E19\u0E31\u0E01 24 \u0E0A\u0E21. ${g.name} ${g.heavy} \u0E2A\u0E16\u0E32\u0E19\u0E35 \u0E2A\u0E39\u0E07\u0E2A\u0E38\u0E14 ${fmt2(g.max.mm)} \u0E21\u0E21. (\u0E2D.${g.max.amphoe})` });
   }
+  const t0 = new Date(snapshot.generated_at).getTime();
+  const hi = (snapshot.tide?.highs ?? []).find((h) => h.diff >= 0 && new Date(h.time).getTime() - t0 <= 24 * 36e5);
+  if (hi) {
+    const at = new Date(hi.time).toLocaleString("th-TH", { timeZone: "Asia/Bangkok", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+    out.push({ key: "tide:MKG006", level: "yellow", text: `\u0E19\u0E49\u0E33\u0E17\u0E30\u0E40\u0E25\u0E2B\u0E19\u0E38\u0E19\u0E2A\u0E39\u0E07: \u0E04\u0E32\u0E14\u0E23\u0E30\u0E14\u0E31\u0E1A\u0E19\u0E49\u0E33\u0E17\u0E35\u0E48${snapshot.tide.station.name} \u0E2A\u0E39\u0E07\u0E01\u0E27\u0E48\u0E32\u0E15\u0E25\u0E34\u0E48\u0E07 ${fmt2(hi.diff, 2)} \u0E21. \u0E23\u0E32\u0E27 ${at} \u0E19.` });
+  }
   for (const p of snapshot.rain ?? []) {
     if (p.id === "rbr") continue;
     const next3 = p.days.slice(1, 4).reduce((a, b) => a + (b.mm ?? 0), 0);
@@ -748,9 +754,9 @@ function formatDaily(snapshot, active, webUrl, now = new Date(snapshot.generated
       L.push(`\u2022 ${name}: \u0E44\u0E21\u0E48\u0E21\u0E35\u0E02\u0E49\u0E2D\u0E21\u0E39\u0E25`);
       continue;
     }
-    const bank = s.diff_bank == null ? "" : s.diff_bank > 0 ? `\u0E2A\u0E39\u0E07\u0E01\u0E27\u0E48\u0E32\u0E15\u0E25\u0E34\u0E48\u0E07 ${fmt3(s.diff_bank, 2)} \u0E21.` : `\u0E15\u0E48\u0E33\u0E01\u0E27\u0E48\u0E32\u0E15\u0E25\u0E34\u0E48\u0E07 ${fmt3(-s.diff_bank, 2)} \u0E21.`;
+    const bank2 = s.diff_bank == null ? "" : s.diff_bank > 0 ? `\u0E2A\u0E39\u0E07\u0E01\u0E27\u0E48\u0E32\u0E15\u0E25\u0E34\u0E48\u0E07 ${fmt3(s.diff_bank, 2)} \u0E21.` : `\u0E15\u0E48\u0E33\u0E01\u0E27\u0E48\u0E32\u0E15\u0E25\u0E34\u0E48\u0E07 ${fmt3(-s.diff_bank, 2)} \u0E21.`;
     const q = s.q ? ` \xB7 ${fmt3(s.q)} \u0E25\u0E1A.\u0E21./\u0E27\u0E34` : "";
-    L.push(`\u2022 ${name}: ${bank || "\u0E44\u0E21\u0E48\u0E21\u0E35\u0E04\u0E48\u0E32\u0E40\u0E17\u0E35\u0E22\u0E1A\u0E15\u0E25\u0E34\u0E48\u0E07"}${q}${arrow(s.trend)} (${hm(s.time, now)}${s.stale ? " \u26A0\uFE0F\u0E02\u0E49\u0E2D\u0E21\u0E39\u0E25\u0E40\u0E01\u0E48\u0E32" : ""})`);
+    L.push(`\u2022 ${name}: ${bank2 || "\u0E44\u0E21\u0E48\u0E21\u0E35\u0E04\u0E48\u0E32\u0E40\u0E17\u0E35\u0E22\u0E1A\u0E15\u0E25\u0E34\u0E48\u0E07"}${q}${arrow(s.trend)} (${hm(s.time, now)}${s.stale ? " \u26A0\uFE0F\u0E02\u0E49\u0E2D\u0E21\u0E39\u0E25\u0E40\u0E01\u0E48\u0E32" : ""})`);
   }
   const dams = (snapshot.dams ?? []).filter((d) => !d.missing);
   if (dams.length) {
@@ -769,9 +775,16 @@ function formatDaily(snapshot, active, webUrl, now = new Date(snapshot.generated
     L.push("", `\u{1F326} \u0E1D\u0E19\u0E04\u0E32\u0E14\u0E01\u0E32\u0E23\u0E13\u0E4C 3 \u0E27\u0E31\u0E19 (Open-Meteo \u0E13 ${hm(snapshot.generated_at, now)})`);
     for (const p of rain) L.push(`\u2022 ${p.name}: ${fmt3(p.days.slice(1, 4).reduce((a, b) => a + (b.mm ?? 0), 0))} \u0E21\u0E21.`);
   }
-  const sea = snapshot.sea?.next24h ?? [];
-  const highs = sea.filter((r, i) => i > 0 && i < sea.length - 1 && r.m >= sea[i - 1].m && r.m > sea[i + 1].m);
-  if (highs.length) L.push("", `\u{1F30A} \u0E19\u0E49\u0E33\u0E17\u0E30\u0E40\u0E25\u0E02\u0E36\u0E49\u0E19\u0E2A\u0E39\u0E07\u0E17\u0E35\u0E48\u0E1B\u0E32\u0E01\u0E41\u0E21\u0E48\u0E01\u0E25\u0E2D\u0E07 (\u0E41\u0E1A\u0E1A\u0E08\u0E33\u0E25\u0E2D\u0E07): ${highs.slice(0, 2).map((r) => `${hm(r.time, now)} ${fmt3(r.m, 2)} \u0E21.`).join(", ")}`);
+  const tide = snapshot.tide;
+  const bank = (d) => d >= 0 ? `\u0E2A\u0E39\u0E07\u0E01\u0E27\u0E48\u0E32\u0E15\u0E25\u0E34\u0E48\u0E07 ${fmt3(d, 2)} \u0E21.` : `\u0E15\u0E48\u0E33\u0E01\u0E27\u0E48\u0E32\u0E15\u0E25\u0E34\u0E48\u0E07 ${fmt3(-d, 2)} \u0E21.`;
+  if (tide?.highs?.length) {
+    L.push("", `\u{1F30A} \u0E19\u0E49\u0E33\u0E17\u0E30\u0E40\u0E25\u0E2B\u0E19\u0E38\u0E19 ${tide.station.name} (\u0E04\u0E32\u0E14\u0E08\u0E32\u0E01\u0E04\u0E48\u0E32\u0E27\u0E31\u0E14\u0E08\u0E23\u0E34\u0E07 \xB10.2 \u0E21.)`);
+    for (const h of tide.highs.slice(0, 2)) L.push(`\u2022 ${hm(h.time, now)} ${bank(h.diff)}`);
+  } else {
+    const sea = snapshot.sea?.next24h ?? [];
+    const highs = sea.filter((r, i) => i > 0 && i < sea.length - 1 && r.m >= sea[i - 1].m && r.m > sea[i + 1].m);
+    if (highs.length) L.push("", `\u{1F30A} \u0E19\u0E49\u0E33\u0E17\u0E30\u0E40\u0E25\u0E02\u0E36\u0E49\u0E19\u0E2A\u0E39\u0E07\u0E17\u0E35\u0E48\u0E1B\u0E32\u0E01\u0E41\u0E21\u0E48\u0E01\u0E25\u0E2D\u0E07 (\u0E41\u0E1A\u0E1A\u0E08\u0E33\u0E25\u0E2D\u0E07): ${highs.slice(0, 2).map((r) => `${hm(r.time, now)} ${fmt3(r.m, 2)} \u0E21.`).join(", ")}`);
+  }
   const top = [...active].filter((a) => RANK2[a.level] >= RANK2.orange).sort((a, b) => RANK2[b.level] - RANK2[a.level]).slice(0, 3);
   if (top.length) {
     L.push("", "\u26A0\uFE0F \u0E08\u0E38\u0E14\u0E17\u0E35\u0E48\u0E15\u0E49\u0E2D\u0E07\u0E23\u0E30\u0E27\u0E31\u0E07");
@@ -907,6 +920,77 @@ async function syncRainObs(db, now = /* @__PURE__ */ new Date()) {
   return { fetched: true, groups: summarizeRainObs(rows.slice(1)), checked_at: now.toISOString() };
 }
 
+// ingest/tide.mjs
+var TIDE_STATION = { code: "MKG006", name: "\u0E2A\u0E30\u0E1E\u0E32\u0E19\u0E1E\u0E23\u0E30\u0E23\u0E32\u0E21\u0E2A\u0E2D\u0E07 \u0E2A\u0E21\u0E38\u0E17\u0E23\u0E2A\u0E07\u0E04\u0E23\u0E32\u0E21" };
+var FIT_HOURS = 72;
+var MIN_POINTS = 36;
+var UA3 = "WaterWest/0.1 (non-commercial Mae Klong flood monitoring)";
+var MODEL_URL = "https://marine-api.open-meteo.com/v1/marine?latitude=13.36&longitude=100.0&hourly=sea_level_height_msl&timezone=GMT&past_days=3&forecast_days=2";
+var hourOf = (ms) => Math.floor(ms / 36e5);
+function fitTide(model, obs, nowMs = Date.now()) {
+  const now = hourOf(nowMs);
+  const hours = [...obs.keys()].filter((h) => h > now - FIT_HOURS && h <= now);
+  let best = null;
+  for (let lag = 0; lag <= 3; lag++) {
+    let n = 0, sx = 0, sy = 0, sxx = 0, sxy = 0;
+    for (const h of hours) {
+      const x = model.get(h - lag), y = obs.get(h);
+      if (x == null || y == null) continue;
+      n++;
+      sx += x;
+      sy += y;
+      sxx += x * x;
+      sxy += x * y;
+    }
+    if (n < MIN_POINTS || sxx - sx * sx / n <= 0) continue;
+    const a = (sxy - sx * sy / n) / (sxx - sx * sx / n);
+    const b = (sy - a * sx) / n;
+    let se = 0;
+    for (const h of hours) {
+      const x = model.get(h - lag), y = obs.get(h);
+      if (x != null && y != null) se += (a * x + b - y) ** 2;
+    }
+    const rmse = Math.sqrt(se / n);
+    if (!best || rmse < best.rmse) best = { lag, a, b, rmse, n };
+  }
+  if (!best || best.a < 0.3) return null;
+  const pred = [];
+  for (let h = now - 24; h <= now + 48; h++) {
+    const x = model.get(h - best.lag);
+    if (x != null) pred.push([h, +(best.a * x + best.b).toFixed(3)]);
+  }
+  const highs = [];
+  for (let i = 1; i < pred.length - 1; i++) {
+    const [h, v] = pred[i];
+    if (h >= now && v >= pred[i - 1][1] && v > pred[i + 1][1]) highs.push({ time: new Date(h * 36e5).toISOString(), diff: v });
+  }
+  return { ...best, rmse: +best.rmse.toFixed(3), pred: pred.map(([h, v]) => [h * 36e5, v]), highs };
+}
+async function fetchModel() {
+  const res = await fetch(MODEL_URL, { headers: { "User-Agent": UA3 }, signal: AbortSignal.timeout(3e4) });
+  if (!res.ok) throw new Error(`Open-Meteo marine HTTP ${res.status}`);
+  const j = await res.json();
+  return new Map(j.hourly.time.map((t, i) => [hourOf((/* @__PURE__ */ new Date(`${t}:00Z`)).getTime()), j.hourly.sea_level_height_msl[i]]).filter(([, v]) => v != null));
+}
+async function fetchObs(db, nowMs = Date.now()) {
+  const since = new Date(nowMs - (FIT_HOURS + 2) * 36e5).toISOString();
+  const res = await fetch(`${db.url}/rest/v1/readings?select=measured_at,diff_bank&station_code=eq.${TIDE_STATION.code}&measured_at=gte.${since}&diff_bank=not.is.null&order=measured_at.asc&limit=2000`, { headers: db.headers });
+  if (!res.ok) throw new Error(`\u0E2D\u0E48\u0E32\u0E19 readings ${TIDE_STATION.code} \u0E44\u0E21\u0E48\u0E2A\u0E33\u0E40\u0E23\u0E47\u0E08: HTTP ${res.status}`);
+  const sum = /* @__PURE__ */ new Map();
+  for (const r of await res.json()) {
+    const h = hourOf(new Date(r.measured_at).getTime());
+    const [s, n] = sum.get(h) ?? [0, 0];
+    sum.set(h, [s + Number(r.diff_bank), n + 1]);
+  }
+  return new Map([...sum].map(([h, [s, n]]) => [h, s / n]));
+}
+async function tideFromStation(db, nowMs = Date.now()) {
+  const [model, obs] = await Promise.all([fetchModel(), fetchObs(db, nowMs)]);
+  const f = fitTide(model, obs, nowMs);
+  if (!f) return null;
+  return { station: TIDE_STATION, lag_h: f.lag, rmse: f.rmse, n: f.n, highs: f.highs.slice(0, 4), fitted_at: new Date(nowMs).toISOString() };
+}
+
 // supabase/functions/ingest/index.ts
 var MIN_GAP_MIN = 8;
 function secretKey() {
@@ -940,6 +1024,14 @@ Deno.serve(async () => {
     rainObs = { fetched: r.fetched, checked_at: r.checked_at };
   } catch (e) {
     rainObs = { error: String(e.message ?? e) };
+  }
+  let tide = {};
+  try {
+    const t = await tideFromStation(db, new Date(snapshot.generated_at).getTime());
+    Object.assign(snapshot, { tide: t });
+    tide = t ? { lag_h: t.lag_h, rmse: t.rmse, highs: t.highs.length } : { status: "\u0E02\u0E49\u0E2D\u0E21\u0E39\u0E25\u0E2A\u0E16\u0E32\u0E19\u0E35\u0E44\u0E21\u0E48\u0E1E\u0E2D \u0E43\u0E0A\u0E49\u0E41\u0E1A\u0E1A\u0E08\u0E33\u0E25\u0E2D\u0E07\u0E2D\u0E22\u0E48\u0E32\u0E07\u0E40\u0E14\u0E35\u0E22\u0E27" };
+  } catch (e) {
+    tide = { error: String(e.message ?? e) };
   }
   const token = Deno.env.get("LINE_CHANNEL_ACCESS_TOKEN");
   let alerts = {};
@@ -991,5 +1083,5 @@ Deno.serve(async () => {
   } catch (e) {
     daily = { error: String(e.message ?? e) };
   }
-  return json({ ok: true, generated_at: snapshot.generated_at, saved, failed, alerts, health, quota, daily, rainObs });
+  return json({ ok: true, generated_at: snapshot.generated_at, saved, failed, alerts, health, quota, daily, rainObs, tide });
 });

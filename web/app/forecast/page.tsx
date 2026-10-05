@@ -4,8 +4,9 @@ import { getSnapshot } from "@/lib/data";
 import { getStationHistory } from "@/lib/history";
 import { CALIBRATION, OFFICIAL_RATCHABURI_H, TRAVEL_STATS } from "@/lib/route";
 import { getRainObs } from "@/lib/rainObs";
+import { getStationTide, TIDE_STATION, TYPICAL_ERR_M } from "@/lib/tide";
 import { RainObsCard } from "@/components/RainObsCard";
-import { BASE_CODE, getRain7, getSea, tideClash, TOWN_TIDE_LAG_H, travelPlan, upcomingHighs } from "@/lib/forecast";
+import { BASE_CODE, getRain7, getSea, recentSea, tideClash, TOWN_TIDE_LAG_H, travelPlan, upcomingHighs } from "@/lib/forecast";
 import { fmt, fmtSigned, fmtTime } from "@/lib/status";
 import { Badge, Card, levelText, SectionTitle, Trend } from "@/components/ui";
 import { LineChart } from "@/components/LineChart";
@@ -37,6 +38,8 @@ export default async function ForecastPage() {
   const rising = (change6h ?? 0) > 0.02 || base?.trend === "เพิ่มขึ้น";
   const falling = (change6h ?? 0) < -0.02 || base?.trend === "ลดลง";
   const nextHighs = upcomingHighs(sea);
+  const st = await getStationTide(sea);
+  const lagH = st?.lag ?? TOWN_TIDE_LAG_H;
   const maxRain = Math.max(1, ...(rain ?? []).flatMap((a) => a.days.map((d) => d.mm ?? 0)));
 
   return (
@@ -81,7 +84,7 @@ export default async function ForecastPage() {
                 </thead>
                 <tbody>
                   {plan.rows.map((r) => {
-                    const clash = sea && (r.code === "MKG006" || r.code === "MOUTH") ? tideClash(r.eta, sea.tides) : undefined;
+                    const clash = sea && (r.code === "MKG006" || r.code === "MOUTH") ? tideClash(r.eta, sea.tides, lagH) : undefined;
                     return (
                       <tr key={r.code} className="border-t border-border align-top">
                         <td className="py-2 pr-2">
@@ -93,7 +96,7 @@ export default async function ForecastPage() {
                           <span className="font-semibold">{hhmm(r.eta)}</span>
                           {clash && (
                             <span className="mt-1 block rounded-md bg-orange-bg px-2 py-0.5 text-xs font-semibold text-orange">
-                              ใกล้ช่วงน้ำทะเลขึ้นสูง ({hhmm(new Date(new Date(clash.time).getTime() + TOWN_TIDE_LAG_H * 3600e3).toISOString())}) — อาจเอ่อสูงกว่าปกติ
+                              ใกล้ช่วงน้ำทะเลขึ้นสูง ({hhmm(new Date(new Date(clash.time).getTime() + lagH * 3600e3).toISOString())}) — อาจเอ่อสูงกว่าปกติ
                             </span>
                           )}
                         </td>
@@ -123,9 +126,42 @@ export default async function ForecastPage() {
 
       {/* น้ำทะเลหนุน */}
       <Card>
-        <SectionTitle hint="แบบจำลอง Open-Meteo · ไม่ใช่ตารางน้ำทางการ">น้ำทะเลหนุน ปากแม่กลอง</SectionTitle>
+        <SectionTitle hint={st ? `ปรับจากค่าวัดจริง ${TIDE_STATION.code} · ไม่ใช่ตารางน้ำทางการ` : "แบบจำลอง Open-Meteo · ไม่ใช่ตารางน้ำทางการ"}>
+          น้ำทะเลหนุน {st ? TIDE_STATION.name : "ปากแม่กลอง"}
+        </SectionTitle>
         {!sea ? (
           <p className="text-sm text-muted">ดึงข้อมูลไม่ได้</p>
+        ) : st ? (
+          <>
+            <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {st.highs.map((h) => (
+                <div key={h.time} className={`rounded-xl border p-2.5 ${h.diff >= -TYPICAL_ERR_M ? "border-orange bg-orange-bg" : "border-border"}`}>
+                  <p className="text-xs text-muted">คาดน้ำขึ้นสูง</p>
+                  <p className="text-sm font-semibold">{hhmm(h.time)}</p>
+                  <p className={`tnum text-xs ${h.diff >= -TYPICAL_ERR_M ? "font-semibold text-orange" : "text-muted"}`}>
+                    {h.diff >= 0 ? `สูงกว่าตลิ่ง ${fmt(h.diff, 2)} ม.` : `ต่ำกว่าตลิ่ง ${fmt(-h.diff, 2)} ม.`}
+                  </p>
+                </div>
+              ))}
+            </div>
+            <LineChart
+              title="ระดับน้ำเทียบตลิ่ง"
+              unit="ม."
+              decimals={2}
+              height={200}
+              signed
+              refs={[{ y: 0, label: "ตลิ่ง", color: "var(--red)" }]}
+              series={[
+                { key: "obs", name: `วัดจริง ${TIDE_STATION.code}`, color: "var(--series-1)", points: st.observed },
+                { key: "pred", name: "คาดการณ์ (ปรับจากค่าวัดจริง)", color: "var(--series-2)", points: st.predicted },
+              ]}
+            />
+            <p className="mt-2 text-xs text-muted">
+              นำแบบจำลองน้ำทะเลหน้าอ่าว (Open-Meteo) มาปรับให้ตรงกับระดับน้ำที่วัดได้จริงที่สถานี {TIDE_STATION.code} ใน 72 ชม. ล่าสุด ({st.n} ชม.) ·
+              ตัวเมืองช้ากว่าทะเลหน้าอ่าว {st.lag} ชม. · คลาดเคลื่อนเฉลี่ย {fmt(st.rmse, 2)} ม. · ยอดน้ำขึ้นมักคลาดไม่เกิน ±{fmt(TYPICAL_ERR_M, 1)} ม. และ ±1 ชม. ·
+              รวมผลของน้ำเหนือที่ไหลลงมาแล้วในช่วงที่วัด แต่ถ้าน้ำเหนือเพิ่มขึ้นมาก ระดับจริงจะสูงกว่านี้ · กรอบสีส้ม = ห่างตลิ่งไม่ถึง {fmt(TYPICAL_ERR_M, 1)} ม.
+            </p>
+          </>
         ) : (
           <>
             <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -142,10 +178,10 @@ export default async function ForecastPage() {
               unit="ม."
               decimals={2}
               height={200}
-              series={[{ key: "sea", name: "ระดับน้ำทะเล (แบบจำลอง)", color: "var(--series-1)", points: sea.points }]}
+              series={[{ key: "sea", name: "ระดับน้ำทะเล (แบบจำลอง)", color: "var(--series-1)", points: recentSea(sea) }]}
             />
             <p className="mt-2 text-xs text-muted">
-              เทียบกับสถานีวัดจริง MKG006 สมุทรสงคราม: เวลาน้ำขึ้นตรงกัน โดยที่ตัวเมืองช้ากว่าแบบจำลองราว {TOWN_TIDE_LAG_H} ชม. ·
+              ยังมีข้อมูลสถานีวัดจริง {TIDE_STATION.code} ไม่พอสำหรับปรับแบบจำลอง จึงแสดงแบบจำลองหน้าอ่าว · ตัวเมืองช้ากว่าแบบจำลองราว {TOWN_TIDE_LAG_H} ชม. ·
               ช่วงที่น้ำเหนือมาถึงตรงกับน้ำขึ้นสูง พื้นที่อัมพวา–เมืองสมุทรสงครามเสี่ยงที่สุด
             </p>
           </>

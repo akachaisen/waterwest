@@ -45,6 +45,14 @@ export function evaluate(snapshot, activeKeys = new Set()) {
     else if (g.heavy >= 3) out.push({ key: `rainobs:${g.id}`, level: 'yellow', text: `ฝนหนัก 24 ชม. ${g.name} ${g.heavy} สถานี สูงสุด ${fmt(g.max.mm)} มม. (อ.${g.max.amphoe})` });
   }
 
+  // น้ำทะเลหนุน: คาดว่าน้ำขึ้นสูงภายใน 24 ชม. ที่สมุทรสงคราม (MKG006) ถึงระดับตลิ่ง
+  const t0 = new Date(snapshot.generated_at).getTime();
+  const hi = (snapshot.tide?.highs ?? []).find((h) => h.diff >= 0 && new Date(h.time).getTime() - t0 <= 24 * 36e5);
+  if (hi) {
+    const at = new Date(hi.time).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    out.push({ key: 'tide:MKG006', level: 'yellow', text: `น้ำทะเลหนุนสูง: คาดระดับน้ำที่${snapshot.tide.station.name} สูงกว่าตลิ่ง ${fmt(hi.diff, 2)} ม. ราว ${at} น.` });
+  }
+
   for (const p of snapshot.rain ?? []) {
     if (p.id === 'rbr') continue;
     const next3 = p.days.slice(1, 4).reduce((a, b) => a + (b.mm ?? 0), 0);

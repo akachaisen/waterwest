@@ -9,6 +9,7 @@ import { checkHealth, formatHealth, pushLine } from "../../../ingest/health.mjs"
 import { syncQuota } from "../../../ingest/quota.mjs";
 import { maybeSendDaily } from "../../../ingest/daily.mjs";
 import { syncRainObs } from "../../../ingest/rainobs.mjs";
+import { tideFromStation } from "../../../ingest/tide.mjs";
 
 const MIN_GAP_MIN = 8;
 
@@ -60,6 +61,16 @@ Deno.serve(async () => {
     rainObs = { fetched: r.fetched, checked_at: r.checked_at };
   } catch (e) {
     rainObs = { error: String((e as Error).message ?? e) };
+  }
+
+  // น้ำทะเลหนุน: ปรับแบบจำลองให้ตรงสถานีจริง MKG006 แล้วคาดน้ำขึ้นสูงครั้งถัดไป (เทียบตลิ่ง)
+  let tide: Record<string, unknown> = {};
+  try {
+    const t = await tideFromStation(db, new Date(snapshot.generated_at).getTime());
+    Object.assign(snapshot, { tide: t });
+    tide = t ? { lag_h: t.lag_h, rmse: t.rmse, highs: t.highs.length } : { status: "ข้อมูลสถานีไม่พอ ใช้แบบจำลองอย่างเดียว" };
+  } catch (e) {
+    tide = { error: String((e as Error).message ?? e) };
   }
 
   // ขั้นที่ 6: เตือนภัย + LINE (ส่งเฉพาะเหตุใหม่/รุนแรงขึ้น/คลี่คลาย)
@@ -117,5 +128,5 @@ Deno.serve(async () => {
   } catch (e) {
     daily = { error: String((e as Error).message ?? e) };
   }
-  return json({ ok: true, generated_at: snapshot.generated_at, saved, failed, alerts, health, quota, daily, rainObs });
+  return json({ ok: true, generated_at: snapshot.generated_at, saved, failed, alerts, health, quota, daily, rainObs, tide });
 });

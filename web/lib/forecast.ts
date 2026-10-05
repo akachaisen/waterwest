@@ -37,7 +37,7 @@ export type SeaSeries = { points: [number, number | null][]; tides: Tide[] };
 
 export async function getSea(): Promise<SeaSeries> {
   const url =
-    "https://marine-api.open-meteo.com/v1/marine?latitude=13.36&longitude=100.0&hourly=sea_level_height_msl&timezone=Asia%2FBangkok&past_days=1&forecast_days=3";
+    "https://marine-api.open-meteo.com/v1/marine?latitude=13.36&longitude=100.0&hourly=sea_level_height_msl&timezone=Asia%2FBangkok&past_days=3&forecast_days=3";
   const j = await fetch(url, { headers: UA, next: { revalidate: 3600 } }).then((r) => r.json());
   const t: string[] = j.hourly.time;
   const v: (number | null)[] = j.hourly.sea_level_height_msl;
@@ -52,6 +52,12 @@ export async function getSea(): Promise<SeaSeries> {
   return { points: ms.map((x, i) => [x, v[i]]), tides };
 }
 
+// จุดแบบจำลองตั้งแต่ hours ชม. ก่อนตอนนี้ (ใช้แสดงกราฟ — ดึงย้อนหลัง 3 วันไว้ปรับกับสถานีจริง)
+export function recentSea(sea: SeaSeries, hours = 24): SeaSeries["points"] {
+  const from = Date.now() - hours * 3600e3;
+  return sea.points.filter((p) => p[0] >= from);
+}
+
 // น้ำขึ้นสูงครั้งถัดไป (นับจาก 1 ชม. ก่อนตอนนี้)
 export function upcomingHighs(sea: SeaSeries | null, n = 4): Tide[] {
   const from = Date.now() - 3600e3;
@@ -62,11 +68,11 @@ export function upcomingHighs(sea: SeaSeries | null, n = 4): Tide[] {
 // แบบจำลองบอกเวลาที่ทะเลหน้าอ่าว ตัวเมืองสมุทรสงครามช้ากว่าราว 1 ชม. (เทียบกับ MKG006)
 export const TOWN_TIDE_LAG_H = 1;
 
-export function tideClash(arrivalIso: string, tides: Tide[]): Tide | undefined {
+export function tideClash(arrivalIso: string, tides: Tide[], lagH = TOWN_TIDE_LAG_H): Tide | undefined {
   const a = new Date(arrivalIso).getTime();
   return tides
     .filter((t) => t.kind === "high")
-    .map((t) => ({ ...t, at: new Date(t.time).getTime() + TOWN_TIDE_LAG_H * 3600e3 }))
+    .map((t) => ({ ...t, at: new Date(t.time).getTime() + lagH * 3600e3 }))
     .find((t) => Math.abs(t.at - a) <= 3 * 3600e3);
 }
 

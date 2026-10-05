@@ -69,9 +69,16 @@ export function formatDaily(snapshot, active, webUrl, now = new Date(snapshot.ge
     for (const p of rain) L.push(`• ${p.name}: ${fmt(p.days.slice(1, 4).reduce((a, b) => a + (b.mm ?? 0), 0))} มม.`);
   }
 
-  const sea = snapshot.sea?.next24h ?? [];
-  const highs = sea.filter((r, i) => i > 0 && i < sea.length - 1 && r.m >= sea[i - 1].m && r.m > sea[i + 1].m);
-  if (highs.length) L.push('', `🌊 น้ำทะเลขึ้นสูงที่ปากแม่กลอง (แบบจำลอง): ${highs.slice(0, 2).map((r) => `${hm(r.time, now)} ${fmt(r.m, 2)} ม.`).join(', ')}`);
+  const tide = snapshot.tide;
+  const bank = (d) => (d >= 0 ? `สูงกว่าตลิ่ง ${fmt(d, 2)} ม.` : `ต่ำกว่าตลิ่ง ${fmt(-d, 2)} ม.`);
+  if (tide?.highs?.length) {
+    L.push('', `🌊 น้ำทะเลหนุน ${tide.station.name} (คาดจากค่าวัดจริง ±0.2 ม.)`);
+    for (const h of tide.highs.slice(0, 2)) L.push(`• ${hm(h.time, now)} ${bank(h.diff)}`);
+  } else {
+    const sea = snapshot.sea?.next24h ?? [];
+    const highs = sea.filter((r, i) => i > 0 && i < sea.length - 1 && r.m >= sea[i - 1].m && r.m > sea[i + 1].m);
+    if (highs.length) L.push('', `🌊 น้ำทะเลขึ้นสูงที่ปากแม่กลอง (แบบจำลอง): ${highs.slice(0, 2).map((r) => `${hm(r.time, now)} ${fmt(r.m, 2)} ม.`).join(', ')}`);
+  }
 
   const top = [...active].filter((a) => RANK[a.level] >= RANK.orange).sort((a, b) => RANK[b.level] - RANK[a.level]).slice(0, 3);
   if (top.length) {

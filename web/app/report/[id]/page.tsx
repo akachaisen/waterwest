@@ -3,7 +3,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getSnapshot } from "@/lib/data";
 import { analyze, getPointRain, resolvePlace, RISK_TYPE } from "@/lib/area";
-import { getSea, TOWN_TIDE_LAG_H, travelPlan, upcomingHighs } from "@/lib/forecast";
+import { getSea, travelPlan } from "@/lib/forecast";
+import { bankText, townHighs } from "@/lib/tide";
 import { fmt, fmtSigned, LEVEL_TEXT, overall } from "@/lib/status";
 import type { Level } from "@/lib/types";
 import { levelBg, levelDot, levelText } from "@/components/ui";
@@ -52,7 +53,7 @@ export default async function ReportPage({ params, searchParams }: Props) {
   const basin = overall(s.stations, s.dams, s.maeklongQ?.q ?? null);
   const plan = travelPlan(s);
   const [rain, sea] = await Promise.all([getPointRain(place.lat, place.lon), area.tide ? getSea().catch(() => null) : Promise.resolve(null)]);
-  const highs = sea ? upcomingHighs(sea, 2) : [];
+  const { highs } = sea ? await townHighs(sea, 2) : { highs: [] };
   const vrk = s.dams.find((d) => d.id === "200402");
   const snr = s.dams.find((d) => d.id === "200401");
   const k55 = s.stations.find((x) => x.code === "K.55A");
@@ -147,7 +148,7 @@ export default async function ReportPage({ params, searchParams }: Props) {
               {highs.length > 0 && (
                 <p className="mt-1 text-[12px]">
                   น้ำทะเลขึ้นสูง (เมืองสมุทรสงคราม):{" "}
-                  {highs.map((t) => dt(new Date(new Date(t.time).getTime() + TOWN_TIDE_LAG_H * 3600e3).toISOString())).join(" · ")}
+                  {highs.map((t) => `${dt(t.time)}${t.diff !== null ? ` (${bankText(t.diff)})` : ""}`).join(" · ")}
                 </p>
               )}
             </div>
