@@ -5,7 +5,7 @@
   "description": "WaterWest — ติดตามลุ่มน้ำแม่กลอง จากเขื่อนวชิราลงกรณ/ศรีนครินทร์ ถึงปากอ่าวสมุทรสงคราม",
   "type": "module",
   "engines": {
-    "node": ">=22"
+    "node": ">=24"
   },
   "scripts": {
     "snapshot": "node --env-file-if-exists=.env ingest/snapshot.mjs",
