@@ -130,6 +130,29 @@ create table if not exists daily_summary (
 );
 alter table daily_summary enable row level security;
 
+-- ฝนวัดจริง 24 ชม. ล่าสุดของสถานีวัดฝนในลุ่มน้ำแม่กลอง (แถวละสถานี · ดึงจาก ThaiWater ชั่วโมงละครั้ง)
+-- station_id = 0 คือแถวบันทึกเวลาตรวจล่าสุด · สถานีที่ไม่มีฝนจะไม่มีแถว
+create table if not exists rain_obs (
+  station_id   bigint primary key,
+  name         text not null,
+  amphoe       text,
+  province     text,
+  agency       text,
+  sub_basin    text,
+  grp          text not null,            -- กลุ่มพื้นที่ (ingest/rainobs.mjs RAIN_GROUPS) หรือ meta
+  lat          double precision,
+  lon          double precision,
+  mm_24h       numeric not null,
+  measured_at  timestamptz not null,
+  checked_at   timestamptz not null
+);
+alter table rain_obs enable row level security;
+do $$ begin
+  if not exists (select 1 from pg_policies where tablename = 'rain_obs' and policyname = 'public read') then
+    create policy "public read" on rain_obs for select using (true);
+  end if;
+end $$;
+
 -- ค่าล่าสุดของแต่ละสถานี (ใช้ในหน้าเว็บ)
 create or replace view latest_readings with (security_invoker = true) as
 select distinct on (r.station_code)

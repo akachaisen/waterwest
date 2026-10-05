@@ -463,6 +463,11 @@ function evaluate(snapshot, activeKeys = /* @__PURE__ */ new Set()) {
     else if (d.pct >= 98 && d.net_mcm_day > 0)
       out.push({ key: `dam:${d.id}`, level: "orange", text: `${d.name} ${fmt2(d.pct, 1)}% \u0E19\u0E49\u0E33\u0E40\u0E02\u0E49\u0E32\u0E21\u0E32\u0E01\u0E01\u0E27\u0E48\u0E32\u0E23\u0E30\u0E1A\u0E32\u0E22 \u0E23\u0E32\u0E27 ${fmt2(d.days_to_full ?? 0, 1)} \u0E27\u0E31\u0E19\u0E08\u0E30\u0E40\u0E15\u0E47\u0E21 \u2192 \u0E2D\u0E32\u0E08\u0E23\u0E30\u0E1A\u0E32\u0E22\u0E40\u0E1E\u0E34\u0E48\u0E21` });
   }
+  for (const g of snapshot.rain_obs ?? []) {
+    if (!g.upstream || !g.max) continue;
+    if (g.max.mm >= 90) out.push({ key: `rainobs:${g.id}`, level: "yellow", text: `\u0E1D\u0E19\u0E27\u0E31\u0E14\u0E44\u0E14\u0E49 24 \u0E0A\u0E21. ${g.name} \u0E2A\u0E39\u0E07\u0E2A\u0E38\u0E14 ${fmt2(g.max.mm)} \u0E21\u0E21. (${g.max.name} \u0E2D.${g.max.amphoe})` });
+    else if (g.heavy >= 3) out.push({ key: `rainobs:${g.id}`, level: "yellow", text: `\u0E1D\u0E19\u0E2B\u0E19\u0E31\u0E01 24 \u0E0A\u0E21. ${g.name} ${g.heavy} \u0E2A\u0E16\u0E32\u0E19\u0E35 \u0E2A\u0E39\u0E07\u0E2A\u0E38\u0E14 ${fmt2(g.max.mm)} \u0E21\u0E21. (\u0E2D.${g.max.amphoe})` });
+  }
   for (const p of snapshot.rain ?? []) {
     if (p.id === "rbr") continue;
     const next3 = p.days.slice(1, 4).reduce((a, b) => a + (b.mm ?? 0), 0);
@@ -753,9 +758,15 @@ function formatDaily(snapshot, active, webUrl, now = new Date(snapshot.generated
     L.push("", `\u{1F3DE} \u0E40\u0E02\u0E37\u0E48\u0E2D\u0E19 (\u0E02\u0E49\u0E2D\u0E21\u0E39\u0E25\u0E27\u0E31\u0E19\u0E17\u0E35\u0E48 ${dDate})`);
     for (const d of dams) L.push(`\u2022 ${d.name.replace("\u0E40\u0E02\u0E37\u0E48\u0E2D\u0E19", "")} ${fmt3(d.pct, 1)}% \xB7 \u0E40\u0E02\u0E49\u0E32 ${fmt3(d.inflow_cms)} / \u0E23\u0E30\u0E1A\u0E32\u0E22 ${fmt3(d.outflow_cms)} \u0E25\u0E1A.\u0E21./\u0E27\u0E34`);
   }
+  const obs = (snapshot.rain_obs ?? []).filter((g) => g.max);
+  if (snapshot.rain_obs) {
+    L.push("", `\u{1F327} \u0E1D\u0E19\u0E27\u0E31\u0E14\u0E44\u0E14\u0E49\u0E08\u0E23\u0E34\u0E07 24 \u0E0A\u0E21. (\u0E2A\u0E16\u0E32\u0E19\u0E35\u0E27\u0E31\u0E14\u0E1D\u0E19 \u0E13 ${hm(snapshot.rain_obs_at, now)})`);
+    if (!obs.length) L.push("\u2022 \u0E44\u0E21\u0E48\u0E21\u0E35\u0E2A\u0E16\u0E32\u0E19\u0E35\u0E43\u0E19\u0E25\u0E38\u0E48\u0E21\u0E19\u0E49\u0E33\u0E41\u0E21\u0E48\u0E01\u0E25\u0E2D\u0E07\u0E27\u0E31\u0E14\u0E1D\u0E19\u0E44\u0E14\u0E49");
+    for (const g of obs) L.push(`\u2022 ${g.name}: \u0E2A\u0E39\u0E07\u0E2A\u0E38\u0E14 ${fmt3(g.max.mm, 1)} \u0E21\u0E21. (\u0E2D.${g.max.amphoe})${g.heavy ? ` \xB7 \u0E1D\u0E19\u0E2B\u0E19\u0E31\u0E01 ${g.heavy} \u0E2A\u0E16\u0E32\u0E19\u0E35` : ""}`);
+  }
   const rain = (snapshot.rain ?? []).filter((p) => p.days?.length);
   if (rain.length) {
-    L.push("", `\u{1F327} \u0E1D\u0E19\u0E04\u0E32\u0E14\u0E01\u0E32\u0E23\u0E13\u0E4C 3 \u0E27\u0E31\u0E19 (Open-Meteo \u0E13 ${hm(snapshot.generated_at, now)})`);
+    L.push("", `\u{1F326} \u0E1D\u0E19\u0E04\u0E32\u0E14\u0E01\u0E32\u0E23\u0E13\u0E4C 3 \u0E27\u0E31\u0E19 (Open-Meteo \u0E13 ${hm(snapshot.generated_at, now)})`);
     for (const p of rain) L.push(`\u2022 ${p.name}: ${fmt3(p.days.slice(1, 4).reduce((a, b) => a + (b.mm ?? 0), 0))} \u0E21\u0E21.`);
   }
   const sea = snapshot.sea?.next24h ?? [];
@@ -805,6 +816,97 @@ async function maybeSendDaily(db, snapshot, active, { token, webUrl, enabled = t
   return { status: "\u0E2A\u0E48\u0E07\u0E41\u0E25\u0E49\u0E27" };
 }
 
+// ingest/rainobs.mjs
+var URL_24H = "https://api-v3.thaiwater.net/api/v1/thaiwater30/public/rain_24h";
+var UA2 = "WaterWest/0.1 (non-commercial Mae Klong flood monitoring)";
+var FETCH_EVERY_MIN = 55;
+var MAX_AGE_H = 6;
+var RAIN_GROUPS = [
+  { id: "khwaeyai", name: "\u0E41\u0E04\u0E27\u0E43\u0E2B\u0E0D\u0E48\u0E15\u0E2D\u0E19\u0E1A\u0E19 (\u0E2D\u0E38\u0E49\u0E21\u0E1C\u0E32\u0E07\u2013\u0E28\u0E23\u0E35\u0E2A\u0E27\u0E31\u0E2A\u0E14\u0E34\u0E4C)", subs: ["1401", "1402", "1403", "1404", "1405", "1406", "1407"], upstream: true },
+  { id: "khwaenoi_up", name: "\u0E41\u0E04\u0E27\u0E19\u0E49\u0E2D\u0E22\u0E15\u0E2D\u0E19\u0E1A\u0E19 (\u0E2A\u0E31\u0E07\u0E02\u0E25\u0E30\u0E1A\u0E38\u0E23\u0E35\u2013\u0E17\u0E2D\u0E07\u0E1C\u0E32\u0E20\u0E39\u0E21\u0E34)", subs: ["1410", "1411"], upstream: true },
+  { id: "taphoen", name: "\u0E25\u0E33\u0E15\u0E30\u0E40\u0E1E\u0E34\u0E19 (\u0E14\u0E48\u0E32\u0E19\u0E0A\u0E49\u0E32\u0E07\u2013\u0E1A\u0E48\u0E2D\u0E1E\u0E25\u0E2D\u0E22)", subs: ["1408"] },
+  { id: "khwaenoi_low", name: "\u0E41\u0E04\u0E27\u0E19\u0E49\u0E2D\u0E22\u0E15\u0E2D\u0E19\u0E25\u0E48\u0E32\u0E07 (\u0E17\u0E2D\u0E07\u0E1C\u0E32\u0E20\u0E39\u0E21\u0E34\u2013\u0E44\u0E17\u0E23\u0E42\u0E22\u0E04)", subs: ["1412", "1413"] },
+  { id: "lower", name: "\u0E01\u0E32\u0E0D\u0E08\u0E19\u0E1A\u0E38\u0E23\u0E35\u2013\u0E23\u0E32\u0E0A\u0E1A\u0E38\u0E23\u0E35\u2013\u0E2A\u0E21\u0E38\u0E17\u0E23\u0E2A\u0E07\u0E04\u0E23\u0E32\u0E21", subs: [] }
+  // ที่เหลือทั้งหมด
+];
+var groupOf = (sub) => (RAIN_GROUPS.find((g) => g.subs.includes(sub)) ?? RAIN_GROUPS[RAIN_GROUPS.length - 1]).id;
+var HEAVY_MM = 35;
+async function fetchRainObs(now = /* @__PURE__ */ new Date()) {
+  const res = await fetch(URL_24H, { headers: { "User-Agent": UA2 }, signal: AbortSignal.timeout(9e4) });
+  if (!res.ok) throw new Error(`ThaiWater rain_24h HTTP ${res.status}`);
+  const j = await res.json();
+  const rows = [];
+  for (const r of j.data ?? []) {
+    if (!/แม่กลอง/.test(r.basin?.basin_name?.th ?? "")) continue;
+    const at = /* @__PURE__ */ new Date(`${String(r.rainfall_datetime).replace(" ", "T")}:00+07:00`);
+    if (!(r.rain_24h > 0) || (now - at) / 36e5 > MAX_AGE_H) continue;
+    rows.push({
+      station_id: r.station.id,
+      name: r.station.tele_station_name?.th ?? "",
+      amphoe: r.geocode?.amphoe_name?.th ?? "",
+      province: r.geocode?.province_name?.th ?? "",
+      agency: r.agency?.agency_shortname?.th?.trim() ?? "",
+      sub_basin: r.station.sub_basin_id ?? "",
+      grp: groupOf(r.station.sub_basin_id ?? ""),
+      lat: r.station.tele_station_lat,
+      lon: r.station.tele_station_long,
+      mm_24h: r.rain_24h,
+      measured_at: at.toISOString(),
+      checked_at: now.toISOString()
+    });
+  }
+  return rows;
+}
+function summarizeRainObs(rows) {
+  return RAIN_GROUPS.map((g) => {
+    const a = rows.filter((r) => r.grp === g.id).sort((x, y) => y.mm_24h - x.mm_24h);
+    return {
+      id: g.id,
+      name: g.name,
+      upstream: !!g.upstream,
+      stations: a.length,
+      heavy: a.filter((r) => r.mm_24h >= HEAVY_MM).length,
+      max: a[0] ? { mm: Number(a[0].mm_24h), name: a[0].name, amphoe: a[0].amphoe, at: a[0].measured_at } : null
+    };
+  });
+}
+var MARKER_ID = 0;
+var marker = (now) => ({
+  station_id: MARKER_ID,
+  name: "checked",
+  amphoe: "",
+  province: "",
+  agency: "",
+  sub_basin: "",
+  grp: "meta",
+  lat: null,
+  lon: null,
+  mm_24h: 0,
+  measured_at: now.toISOString(),
+  checked_at: now.toISOString()
+});
+async function syncRainObs(db, now = /* @__PURE__ */ new Date()) {
+  const cur = await fetch(`${db.url}/rest/v1/rain_obs?select=*`, { headers: db.headers }).then((r) => {
+    if (!r.ok) throw new Error(`\u0E2D\u0E48\u0E32\u0E19 rain_obs \u0E44\u0E21\u0E48\u0E2A\u0E33\u0E40\u0E23\u0E47\u0E08: HTTP ${r.status}`);
+    return r.json();
+  });
+  const m = cur.find((r) => r.station_id === MARKER_ID);
+  const stations = cur.filter((r) => r.station_id !== MARKER_ID);
+  if (m && (now - new Date(m.checked_at)) / 6e4 < FETCH_EVERY_MIN) {
+    return { fetched: false, groups: summarizeRainObs(stations), checked_at: m.checked_at };
+  }
+  const rows = [marker(now), ...await fetchRainObs(now)];
+  const up = await fetch(`${db.url}/rest/v1/rain_obs?on_conflict=station_id`, {
+    method: "POST",
+    headers: { ...db.headers, Prefer: "resolution=merge-duplicates,return=minimal" },
+    body: JSON.stringify(rows)
+  });
+  if (!up.ok) throw new Error(`\u0E1A\u0E31\u0E19\u0E17\u0E36\u0E01 rain_obs \u0E44\u0E21\u0E48\u0E2A\u0E33\u0E40\u0E23\u0E47\u0E08: HTTP ${up.status} ${await up.text()}`);
+  const del = await fetch(`${db.url}/rest/v1/rain_obs?checked_at=lt.${encodeURIComponent(now.toISOString())}`, { method: "DELETE", headers: db.headers });
+  if (!del.ok) throw new Error(`\u0E25\u0E1A rain_obs \u0E40\u0E01\u0E48\u0E32\u0E44\u0E21\u0E48\u0E2A\u0E33\u0E40\u0E23\u0E47\u0E08: HTTP ${del.status}`);
+  return { fetched: true, groups: summarizeRainObs(rows.slice(1)), checked_at: now.toISOString() };
+}
+
 // supabase/functions/ingest/index.ts
 var MIN_GAP_MIN = 8;
 function secretKey() {
@@ -831,6 +933,14 @@ Deno.serve(async () => {
   const snapshot = await collect();
   const saved = await store(snapshot, env);
   const failed = Object.entries(snapshot.sources).filter(([, v]) => v !== "ok").map(([k]) => k);
+  let rainObs = {};
+  try {
+    const r = await syncRainObs(db, new Date(snapshot.generated_at));
+    Object.assign(snapshot, { rain_obs: r.groups, rain_obs_at: r.checked_at });
+    rainObs = { fetched: r.fetched, checked_at: r.checked_at };
+  } catch (e) {
+    rainObs = { error: String(e.message ?? e) };
+  }
   const token = Deno.env.get("LINE_CHANNEL_ACCESS_TOKEN");
   let alerts = {};
   let active = [];
@@ -881,5 +991,5 @@ Deno.serve(async () => {
   } catch (e) {
     daily = { error: String(e.message ?? e) };
   }
-  return json({ ok: true, generated_at: snapshot.generated_at, saved, failed, alerts, health, quota, daily });
+  return json({ ok: true, generated_at: snapshot.generated_at, saved, failed, alerts, health, quota, daily, rainObs });
 });

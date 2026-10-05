@@ -56,9 +56,16 @@ export function formatDaily(snapshot, active, webUrl, now = new Date(snapshot.ge
     for (const d of dams) L.push(`• ${d.name.replace('เขื่อน', '')} ${fmt(d.pct, 1)}% · เข้า ${fmt(d.inflow_cms)} / ระบาย ${fmt(d.outflow_cms)} ลบ.ม./วิ`);
   }
 
+  const obs = (snapshot.rain_obs ?? []).filter((g) => g.max);
+  if (snapshot.rain_obs) {
+    L.push('', `🌧 ฝนวัดได้จริง 24 ชม. (สถานีวัดฝน ณ ${hm(snapshot.rain_obs_at, now)})`);
+    if (!obs.length) L.push('• ไม่มีสถานีในลุ่มน้ำแม่กลองวัดฝนได้');
+    for (const g of obs) L.push(`• ${g.name}: สูงสุด ${fmt(g.max.mm, 1)} มม. (อ.${g.max.amphoe})${g.heavy ? ` · ฝนหนัก ${g.heavy} สถานี` : ''}`);
+  }
+
   const rain = (snapshot.rain ?? []).filter((p) => p.days?.length);
   if (rain.length) {
-    L.push('', `🌧 ฝนคาดการณ์ 3 วัน (Open-Meteo ณ ${hm(snapshot.generated_at, now)})`);
+    L.push('', `🌦 ฝนคาดการณ์ 3 วัน (Open-Meteo ณ ${hm(snapshot.generated_at, now)})`);
     for (const p of rain) L.push(`• ${p.name}: ${fmt(p.days.slice(1, 4).reduce((a, b) => a + (b.mm ?? 0), 0))} มม.`);
   }
 

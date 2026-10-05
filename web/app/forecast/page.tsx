@@ -3,6 +3,8 @@ import Link from "next/link";
 import { getSnapshot } from "@/lib/data";
 import { getStationHistory } from "@/lib/history";
 import { CALIBRATION, OFFICIAL_RATCHABURI_H, TRAVEL_STATS } from "@/lib/route";
+import { getRainObs } from "@/lib/rainObs";
+import { RainObsCard } from "@/components/RainObsCard";
 import { BASE_CODE, getRain7, getSea, tideClash, TOWN_TIDE_LAG_H, travelPlan, upcomingHighs } from "@/lib/forecast";
 import { fmt, fmtSigned, fmtTime } from "@/lib/status";
 import { Badge, Card, levelText, SectionTitle, Trend } from "@/components/ui";
@@ -24,7 +26,7 @@ const EVENT = [
 ];
 
 export default async function ForecastPage() {
-  const [s, sea, rain] = await Promise.all([getSnapshot(), getSea().catch(() => null), getRain7().catch(() => null)]);
+  const [s, sea, rain, rainObs] = await Promise.all([getSnapshot(), getSea().catch(() => null), getRain7().catch(() => null), getRainObs()]);
   const plan = travelPlan(s);
   const base = plan.base;
   const hist = await getStationHistory(BASE_CODE, 1).catch(() => null);
@@ -149,6 +151,9 @@ export default async function ForecastPage() {
           </>
         )}
       </Card>
+
+      {/* ฝนวัดจริง 24 ชม. */}
+      <RainObsCard obs={rainObs} />
 
       {/* ฝน 7 วัน */}
       <Card>

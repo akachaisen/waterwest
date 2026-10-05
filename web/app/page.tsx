@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { getSnapshot } from "@/lib/data";
 import { latestMaeklongRelease } from "@/lib/announcements";
+import { getRainObs } from "@/lib/rainObs";
+import { RainObsCard } from "@/components/RainObsCard";
 import { fmt, fmtSigned, fmtTime, LEVEL_TEXT, overall, worst } from "@/lib/status";
 import { SEGMENTS } from "@/lib/route";
 import type { Dam, Level, Station } from "@/lib/types";
@@ -26,7 +28,7 @@ const SEG_TEXT: Record<Level, string> = {
 };
 
 export default async function Home() {
-  const [s, official] = await Promise.all([getSnapshot(), latestMaeklongRelease()]);
+  const [s, official, rainObs] = await Promise.all([getSnapshot(), latestMaeklongRelease(), getRainObs()]);
   const by = Object.fromEntries(s.stations.map((x) => [x.code, x]));
   const status = overall(s.stations, s.dams, s.maeklongQ?.q ?? null);
   const vrk = s.dams.find((d) => d.id === "200402");
@@ -124,6 +126,9 @@ export default async function Home() {
       </Card>
 
       <div className="grid gap-3 lg:grid-cols-2">
+        {/* ฝนวัดจริง */}
+        <RainObsCard obs={rainObs} compact />
+
         {/* ฝน */}
         <Card>
           <SectionTitle hint="Open-Meteo · มม./วัน">ฝนคาดการณ์</SectionTitle>

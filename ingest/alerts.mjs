@@ -38,6 +38,13 @@ export function evaluate(snapshot, activeKeys = new Set()) {
       out.push({ key: `dam:${d.id}`, level: 'orange', text: `${d.name} ${fmt(d.pct, 1)}% น้ำเข้ามากกว่าระบาย ราว ${fmt(d.days_to_full ?? 0, 1)} วันจะเต็ม → อาจระบายเพิ่ม` });
   }
 
+  // ฝนวัดจริง 24 ชม. ตอนบนเหนืออ่าง: ฝนหนักมาก (≥90 มม.) หรือฝนหนัก (≥35 มม.) ตั้งแต่ 3 สถานี
+  for (const g of snapshot.rain_obs ?? []) {
+    if (!g.upstream || !g.max) continue;
+    if (g.max.mm >= 90) out.push({ key: `rainobs:${g.id}`, level: 'yellow', text: `ฝนวัดได้ 24 ชม. ${g.name} สูงสุด ${fmt(g.max.mm)} มม. (${g.max.name} อ.${g.max.amphoe})` });
+    else if (g.heavy >= 3) out.push({ key: `rainobs:${g.id}`, level: 'yellow', text: `ฝนหนัก 24 ชม. ${g.name} ${g.heavy} สถานี สูงสุด ${fmt(g.max.mm)} มม. (อ.${g.max.amphoe})` });
+  }
+
   for (const p of snapshot.rain ?? []) {
     if (p.id === 'rbr') continue;
     const next3 = p.days.slice(1, 4).reduce((a, b) => a + (b.mm ?? 0), 0);

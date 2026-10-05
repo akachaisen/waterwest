@@ -8,6 +8,7 @@ import { formatLine, sendLine, syncAlerts } from "../../../ingest/alerts.mjs";
 import { checkHealth, formatHealth, pushLine } from "../../../ingest/health.mjs";
 import { syncQuota } from "../../../ingest/quota.mjs";
 import { maybeSendDaily } from "../../../ingest/daily.mjs";
+import { syncRainObs } from "../../../ingest/rainobs.mjs";
 
 const MIN_GAP_MIN = 8;
 
@@ -50,6 +51,16 @@ Deno.serve(async () => {
   const snapshot = await collect();
   const saved = await store(snapshot, env);
   const failed = Object.entries(snapshot.sources).filter(([, v]) => v !== "ok").map(([k]) => k);
+
+  // ฝนวัดจริง 24 ชม. (ดึงชั่วโมงละครั้ง) — ใส่ใน snapshot ให้กฎเตือนภัยและสรุปรายวันใช้
+  let rainObs: Record<string, unknown> = {};
+  try {
+    const r = await syncRainObs(db, new Date(snapshot.generated_at));
+    Object.assign(snapshot, { rain_obs: r.groups, rain_obs_at: r.checked_at });
+    rainObs = { fetched: r.fetched, checked_at: r.checked_at };
+  } catch (e) {
+    rainObs = { error: String((e as Error).message ?? e) };
+  }
 
   // ขั้นที่ 6: เตือนภัย + LINE (ส่งเฉพาะเหตุใหม่/รุนแรงขึ้น/คลี่คลาย)
   const token = Deno.env.get("LINE_CHANNEL_ACCESS_TOKEN");
@@ -106,5 +117,5 @@ Deno.serve(async () => {
   } catch (e) {
     daily = { error: String((e as Error).message ?? e) };
   }
-  return json({ ok: true, generated_at: snapshot.generated_at, saved, failed, alerts, health, quota, daily });
+  return json({ ok: true, generated_at: snapshot.generated_at, saved, failed, alerts, health, quota, daily, rainObs });
 });
