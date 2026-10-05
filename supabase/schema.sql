@@ -108,6 +108,18 @@ create table if not exists announcements (
 );
 create index if not exists announcements_time on announcements (effective_at desc);
 
+-- โควตาข้อความ LINE รายเดือน (Edge Function อัปเดตทุกรอบ) · ไม่มี policy อ่านสาธารณะ — อ่านได้เฉพาะ secret key (หน้าหลังบ้าน)
+create table if not exists line_quota (
+  month       text primary key,          -- YYYY-MM ตามเวลาไทย
+  quota       int,                       -- โควตาต่อเดือน (null = ไม่จำกัด)
+  used        int not null,              -- ใช้ไปแล้วเดือนนี้
+  reach       int,                       -- ผู้รับ broadcast (= ข้อความที่ใช้ต่อการแจ้งเตือน 1 ครั้ง)
+  followers   int,
+  warned      int not null default 0,    -- ระดับเตือนที่แจ้งผู้ดูแลแล้ว: 0 / 80 / 95 / 100
+  checked_at  timestamptz not null
+);
+alter table line_quota enable row level security;
+
 -- ค่าล่าสุดของแต่ละสถานี (ใช้ในหน้าเว็บ)
 create or replace view latest_readings with (security_invoker = true) as
 select distinct on (r.station_code)

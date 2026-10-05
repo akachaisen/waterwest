@@ -6,6 +6,7 @@ import { collect } from "../../../ingest/core.mjs";
 import { dbConfig, store, upsert } from "../../../ingest/store.mjs";
 import { formatLine, sendLine, syncAlerts } from "../../../ingest/alerts.mjs";
 import { checkHealth, formatHealth, pushLine } from "../../../ingest/health.mjs";
+import { syncQuota } from "../../../ingest/quota.mjs";
 
 const MIN_GAP_MIN = 8;
 
@@ -81,5 +82,14 @@ Deno.serve(async () => {
   } catch (e) {
     health = { error: String((e as Error).message ?? e) };
   }
-  return json({ ok: true, generated_at: snapshot.generated_at, saved, failed, alerts, health });
+  // โควตาข้อความ LINE: บันทึกยอดใช้ + เตือนผู้ดูแลเมื่อใกล้หมด
+  let quota: Record<string, unknown> = {};
+  if (token) {
+    try {
+      quota = await syncQuota(db, token, adminId);
+    } catch (e) {
+      quota = { error: String((e as Error).message ?? e) };
+    }
+  }
+  return json({ ok: true, generated_at: snapshot.generated_at, saved, failed, alerts, health, quota });
 });

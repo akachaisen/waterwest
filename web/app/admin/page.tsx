@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { adminEnabled, isAdmin } from "@/lib/adminAuth";
 import { announcementsEnabled, listAnnouncements, nowThaiInput } from "@/lib/announcements";
+import { latestLineQuota, type LineQuota } from "@/lib/lineQuota";
 import { fmt, fmtTime } from "@/lib/status";
 import { Card, SectionTitle } from "@/components/ui";
 import { logout, removeAnnouncement } from "./actions";
@@ -41,7 +42,7 @@ export default async function AdminPage() {
     );
   }
 
-  const list = await listAnnouncements(50);
+  const [list, quota] = await Promise.all([listAnnouncements(50), latestLineQuota()]);
   const nowLocal = nowThaiInput();
 
   return (
@@ -52,6 +53,8 @@ export default async function AdminPage() {
           <button className="rounded-full border border-border px-4 py-1.5 text-sm hover:border-accent">ออกจากระบบ</button>
         </form>
       </div>
+
+      <QuotaCard q={quota} />
 
       <Card>
         <SectionTitle>เพิ่มประกาศ</SectionTitle>
@@ -84,5 +87,41 @@ export default async function AdminPage() {
         </ul>
       </Card>
     </div>
+  );
+}
+
+// โควตาข้อความ LINE เดือนนี้: แจ้งเตือน 1 ครั้ง (broadcast) ใช้โควตาเท่าจำนวนผู้รับ
+function QuotaCard({ q }: { q: LineQuota | null }) {
+  if (!q) {
+    return (
+      <Card>
+        <SectionTitle>โควตาข้อความ LINE</SectionTitle>
+        <p className="text-sm text-muted">ยังไม่มีข้อมูล (ระบบจะอัปเดตในรอบดึงข้อมูลถัดไป)</p>
+      </Card>
+    );
+  }
+  const per = Math.max(1, q.reach ?? 1);
+  const pct = q.quota ? Math.min(100, Math.round((q.used / q.quota) * 100)) : 0;
+  const bar = pct >= 95 ? "bg-red" : pct >= 80 ? "bg-orange" : "bg-green";
+  return (
+    <Card>
+      <SectionTitle hint={`อัปเดต ${fmtTime(q.checked_at)}`}>โควตาข้อความ LINE · {q.month}</SectionTitle>
+      {q.quota === null ? (
+        <p className="text-sm">ใช้ไป {fmt(q.used)} ข้อความ · แพ็กเกจไม่จำกัดจำนวน</p>
+      ) : (
+        <>
+          <p className="text-sm">
+            ใช้ไป <b>{fmt(q.used)}</b> / {fmt(q.quota)} ข้อความ ({pct}%)
+          </p>
+          <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-border" role="img" aria-label={`ใช้โควตาไป ${pct}%`}>
+            <div className={`h-full ${bar}`} style={{ width: `${pct}%` }} />
+          </div>
+          <p className="mt-2 text-xs text-muted">
+            ผู้รับ {q.reach ?? "?"} คน → แจ้งเตือน 1 ครั้งใช้ ~{per} ข้อความ · ส่งได้อีกประมาณ{" "}
+            {Math.max(0, Math.floor((q.quota - q.used) / per))} ครั้ง · ระบบส่ง LINE ถึงผู้ดูแลเมื่อใช้ถึง 80%, 95% และเมื่อไม่พอส่งอีก 1 ครั้ง
+          </p>
+        </>
+      )}
+    </Card>
   );
 }

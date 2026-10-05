@@ -626,6 +626,86 @@ async function pushLine(token, to, text) {
   if (!res.ok) throw new Error(`LINE push HTTP ${res.status} ${await res.text()}`);
 }
 
+// ingest/quota.mjs
+var API = "https://api.line.me/v2/bot";
+async function lineGet(token, path) {
+  const res = await fetch(`${API}${path}`, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(15e3) });
+  if (!res.ok) throw new Error(`LINE ${path} HTTP ${res.status}`);
+  return res.json();
+}
+var jstDate = (d) => new Date(d.getTime() + 9 * 36e5).toISOString().slice(0, 10).replace(/-/g, "");
+var thaiMonth = (d) => new Date(d.getTime() + 7 * 36e5).toISOString().slice(0, 7);
+async function fetchQuota(token, now = /* @__PURE__ */ new Date()) {
+  const [quota, usage] = await Promise.all([lineGet(token, "/message/quota"), lineGet(token, "/message/quota/consumption")]);
+  let reach = null;
+  let followers = null;
+  try {
+    const f = await lineGet(token, `/insight/followers?date=${jstDate(new Date(now.getTime() - 864e5))}`);
+    if (f.status === "ready") {
+      followers = f.followers ?? null;
+      reach = f.targetedReaches ?? (f.followers != null ? f.followers - (f.blocks ?? 0) : null);
+    }
+  } catch {
+  }
+  return { limit: quota.type === "limited" ? quota.value : null, used: usage.totalUsage, reach, followers };
+}
+function quotaLevel({ limit, used, reach }) {
+  if (limit == null) return 0;
+  const left = limit - used;
+  const per = Math.max(1, reach ?? 1);
+  if (left < per) return 100;
+  if (used / limit >= 0.95 || left < 2 * per) return 95;
+  if (used / limit >= 0.8) return 80;
+  return 0;
+}
+function formatQuota(q, level) {
+  const per = Math.max(1, q.reach ?? 1);
+  const left = q.limit - q.used;
+  const head = { 80: "\u{1F7E1} \u0E43\u0E0A\u0E49\u0E42\u0E04\u0E27\u0E15\u0E32\u0E44\u0E1B\u0E41\u0E25\u0E49\u0E27 80%", 95: "\u{1F7E0} \u0E42\u0E04\u0E27\u0E15\u0E32\u0E43\u0E01\u0E25\u0E49\u0E2B\u0E21\u0E14", 100: "\u{1F534} \u0E42\u0E04\u0E27\u0E15\u0E32\u0E44\u0E21\u0E48\u0E1E\u0E2D\u0E2A\u0E48\u0E07\u0E41\u0E08\u0E49\u0E07\u0E40\u0E15\u0E37\u0E2D\u0E19\u0E04\u0E23\u0E31\u0E49\u0E07\u0E16\u0E31\u0E14\u0E44\u0E1B" }[level];
+  return [
+    "\u{1F4CA} WaterWest \xB7 \u0E42\u0E04\u0E27\u0E15\u0E32\u0E02\u0E49\u0E2D\u0E04\u0E27\u0E32\u0E21 LINE",
+    head,
+    "",
+    `\u0E40\u0E14\u0E37\u0E2D\u0E19\u0E19\u0E35\u0E49\u0E43\u0E0A\u0E49\u0E44\u0E1B ${q.used.toLocaleString("en-US")} / ${q.limit.toLocaleString("en-US")} \u0E02\u0E49\u0E2D\u0E04\u0E27\u0E32\u0E21 (${Math.round(q.used / q.limit * 100)}%)`,
+    `\u0E1C\u0E39\u0E49\u0E23\u0E31\u0E1A ${q.reach ?? "?"} \u0E04\u0E19 \u2192 \u0E41\u0E08\u0E49\u0E07\u0E40\u0E15\u0E37\u0E2D\u0E19 1 \u0E04\u0E23\u0E31\u0E49\u0E07\u0E43\u0E0A\u0E49 ~${per} \u0E02\u0E49\u0E2D\u0E04\u0E27\u0E32\u0E21`,
+    `\u0E2A\u0E48\u0E07\u0E41\u0E08\u0E49\u0E07\u0E40\u0E15\u0E37\u0E2D\u0E19\u0E44\u0E14\u0E49\u0E2D\u0E35\u0E01\u0E1B\u0E23\u0E30\u0E21\u0E32\u0E13 ${Math.max(0, Math.floor(left / per))} \u0E04\u0E23\u0E31\u0E49\u0E07`,
+    "",
+    level >= 95 ? "\u0E16\u0E49\u0E32\u0E40\u0E1B\u0E47\u0E19\u0E0A\u0E48\u0E27\u0E07\u0E19\u0E49\u0E33\u0E21\u0E32 \u0E1E\u0E34\u0E08\u0E32\u0E23\u0E13\u0E32\u0E40\u0E1B\u0E25\u0E35\u0E48\u0E22\u0E19\u0E41\u0E1E\u0E47\u0E01\u0E40\u0E01\u0E08\u0E43\u0E19 LINE OA Manager \u2192 Settings \u2192 Monthly plan (\u0E42\u0E04\u0E27\u0E15\u0E32\u0E23\u0E35\u0E40\u0E0B\u0E47\u0E15\u0E15\u0E49\u0E19\u0E40\u0E14\u0E37\u0E2D\u0E19)" : "\u0E42\u0E04\u0E27\u0E15\u0E32\u0E23\u0E35\u0E40\u0E0B\u0E47\u0E15\u0E15\u0E49\u0E19\u0E40\u0E14\u0E37\u0E2D\u0E19"
+  ].join("\n");
+}
+async function syncQuota(db, token, adminId, now = /* @__PURE__ */ new Date()) {
+  const month = thaiMonth(now);
+  const q = await fetchQuota(token, now);
+  const prev = await fetch(`${db.url}/rest/v1/line_quota?select=*&month=eq.${month}`, { headers: db.headers }).then((r) => {
+    if (!r.ok) throw new Error(`\u0E2D\u0E48\u0E32\u0E19 line_quota \u0E44\u0E21\u0E48\u0E2A\u0E33\u0E40\u0E23\u0E47\u0E08: HTTP ${r.status}`);
+    return r.json();
+  });
+  const old = prev[0];
+  const row = {
+    month,
+    quota: q.limit,
+    used: q.used,
+    reach: q.reach ?? old?.reach ?? null,
+    followers: q.followers ?? old?.followers ?? null,
+    warned: old?.warned ?? 0,
+    checked_at: now.toISOString()
+  };
+  const level = quotaLevel({ limit: row.quota, used: row.used, reach: row.reach });
+  let sent = false;
+  if (level > row.warned && adminId) {
+    await pushLine(token, adminId, formatQuota({ limit: row.quota, used: row.used, reach: row.reach }, level));
+    row.warned = level;
+    sent = true;
+  }
+  const res = await fetch(`${db.url}/rest/v1/line_quota?on_conflict=month`, {
+    method: "POST",
+    headers: { ...db.headers, Prefer: "resolution=merge-duplicates,return=minimal" },
+    body: JSON.stringify(row)
+  });
+  if (!res.ok) throw new Error(`\u0E1A\u0E31\u0E19\u0E17\u0E36\u0E01 line_quota \u0E44\u0E21\u0E48\u0E2A\u0E33\u0E40\u0E23\u0E47\u0E08: HTTP ${res.status} ${await res.text()}`);
+  return { used: row.used, limit: row.quota, reach: row.reach, level, sent };
+}
+
 // supabase/functions/ingest/index.ts
 var MIN_GAP_MIN = 8;
 function secretKey() {
@@ -681,5 +761,13 @@ Deno.serve(async () => {
   } catch (e) {
     health = { error: String(e.message ?? e) };
   }
-  return json({ ok: true, generated_at: snapshot.generated_at, saved, failed, alerts, health });
+  let quota = {};
+  if (token) {
+    try {
+      quota = await syncQuota(db, token, adminId);
+    } catch (e) {
+      quota = { error: String(e.message ?? e) };
+    }
+  }
+  return json({ ok: true, generated_at: snapshot.generated_at, saved, failed, alerts, health, quota });
 });
