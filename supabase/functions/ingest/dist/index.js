@@ -562,6 +562,70 @@ async function sendLine(token, text) {
   if (!res.ok) throw new Error(`LINE HTTP ${res.status} ${await res.text()}`);
 }
 
+// ingest/health.mjs
+var DOWN_RUNS = 4;
+var GAP_MIN = 60;
+var STALE_LIMIT = 5;
+var SOURCE_NAME = {
+  swoc: "\u0E01\u0E23\u0E21\u0E0A\u0E25\u0E1B\u0E23\u0E30\u0E17\u0E32\u0E19 (\u0E23\u0E30\u0E14\u0E31\u0E1A\u0E19\u0E49\u0E33)",
+  thaiwater: "ThaiWater (\u0E2A\u0E2A\u0E19.)",
+  ridDams: "\u0E02\u0E49\u0E2D\u0E21\u0E39\u0E25\u0E40\u0E02\u0E37\u0E48\u0E2D\u0E19",
+  egat: "\u0E01\u0E1F\u0E1C. \u0E42\u0E17\u0E23\u0E21\u0E32\u0E15\u0E23",
+  rain: "\u0E1D\u0E19\u0E04\u0E32\u0E14\u0E01\u0E32\u0E23\u0E13\u0E4C",
+  sea: "\u0E19\u0E49\u0E33\u0E17\u0E30\u0E40\u0E25\u0E2B\u0E19\u0E38\u0E19",
+  cctv: "\u0E01\u0E25\u0E49\u0E2D\u0E07 CCTV"
+};
+var staleCount = (run) => (run.alerts ?? []).filter((a) => a.level === "info").length;
+var fmtGap = (min) => min >= 120 ? `${(min / 60).toFixed(1)} \u0E0A\u0E21.` : `${Math.round(min)} \u0E19\u0E32\u0E17\u0E35`;
+function transition(window, bad) {
+  if (window.length < DOWN_RUNS + 1) return null;
+  const recent = window.slice(0, DOWN_RUNS);
+  if (recent.every(bad) && !bad(window[DOWN_RUNS])) return "down";
+  if (!bad(window[0]) && window.slice(1, DOWN_RUNS + 1).every(bad)) return "up";
+  return null;
+}
+function evaluateHealth(snapshot, previous) {
+  const current = { started_at: snapshot.generated_at, sources: snapshot.sources, alerts: snapshot.alerts };
+  const window = [current, ...previous];
+  const notes = [];
+  const prevAt = previous[0]?.started_at ? new Date(previous[0].started_at) : null;
+  const gapMin = prevAt ? (new Date(snapshot.generated_at) - prevAt) / 6e4 : 0;
+  if (gapMin > GAP_MIN) notes.push({ kind: "gap", text: `\u0E23\u0E30\u0E1A\u0E1A\u0E2B\u0E22\u0E38\u0E14\u0E14\u0E36\u0E07\u0E02\u0E49\u0E2D\u0E21\u0E39\u0E25\u0E44\u0E1B ${fmtGap(gapMin)} \u2014 \u0E01\u0E25\u0E31\u0E1A\u0E21\u0E32\u0E17\u0E33\u0E07\u0E32\u0E19\u0E41\u0E25\u0E49\u0E27` });
+  for (const [key, status] of Object.entries(snapshot.sources)) {
+    const t2 = transition(window, (r) => r.sources?.[key] !== void 0 && r.sources[key] !== "ok");
+    const name = SOURCE_NAME[key] ?? key;
+    if (t2 === "down") notes.push({ kind: "down", text: `${name} \u0E43\u0E0A\u0E49\u0E44\u0E21\u0E48\u0E44\u0E14\u0E49\u0E15\u0E48\u0E2D\u0E40\u0E19\u0E37\u0E48\u0E2D\u0E07 ~1 \u0E0A\u0E21. (${String(status).slice(0, 80)})` });
+    if (t2 === "up") notes.push({ kind: "up", text: `${name} \u0E01\u0E25\u0E31\u0E1A\u0E21\u0E32\u0E43\u0E0A\u0E49\u0E44\u0E14\u0E49\u0E41\u0E25\u0E49\u0E27` });
+  }
+  const t = transition(window, (r) => staleCount(r) >= STALE_LIMIT);
+  if (t === "down") notes.push({ kind: "down", text: `\u0E2A\u0E16\u0E32\u0E19\u0E35\u0E02\u0E49\u0E2D\u0E21\u0E39\u0E25\u0E40\u0E01\u0E48\u0E32 (\u0E40\u0E01\u0E34\u0E19 3 \u0E0A\u0E21.) ${staleCount(current)} \u0E08\u0E38\u0E14 \u0E15\u0E48\u0E2D\u0E40\u0E19\u0E37\u0E48\u0E2D\u0E07 ~1 \u0E0A\u0E21.` });
+  if (t === "up") notes.push({ kind: "up", text: "\u0E02\u0E49\u0E2D\u0E21\u0E39\u0E25\u0E2A\u0E16\u0E32\u0E19\u0E35\u0E01\u0E25\u0E31\u0E1A\u0E21\u0E32\u0E40\u0E1B\u0E47\u0E19\u0E1B\u0E31\u0E08\u0E08\u0E38\u0E1A\u0E31\u0E19\u0E41\u0E25\u0E49\u0E27" });
+  return notes;
+}
+async function checkHealth(db, snapshot) {
+  const url = `${db.url}/rest/v1/ingest_runs?select=started_at,sources,alerts&started_at=lt.${encodeURIComponent(snapshot.generated_at)}&order=started_at.desc&limit=${DOWN_RUNS + 1}`;
+  const res = await fetch(url, { headers: db.headers });
+  if (!res.ok) throw new Error(`\u0E2D\u0E48\u0E32\u0E19 ingest_runs \u0E44\u0E21\u0E48\u0E2A\u0E33\u0E40\u0E23\u0E47\u0E08: HTTP ${res.status}`);
+  return evaluateHealth(snapshot, await res.json());
+}
+function formatHealth(notes, snapshot, webUrl) {
+  const t = new Date(snapshot.generated_at).toLocaleString("th-TH", { timeZone: "Asia/Bangkok", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+  const icon = { down: "\u274C", up: "\u2705", gap: "\u26A0\uFE0F" };
+  const L = ["\u{1F6E0} WaterWest \xB7 \u0E41\u0E08\u0E49\u0E07\u0E1C\u0E39\u0E49\u0E14\u0E39\u0E41\u0E25\u0E23\u0E30\u0E1A\u0E1A", `${t} \u0E19.`, ""];
+  for (const n of notes) L.push(`${icon[n.kind]} ${n.text}`);
+  if (webUrl) L.push("", `\u0E15\u0E23\u0E27\u0E08\u0E2A\u0E2D\u0E1A: ${webUrl}`);
+  return L.join("\n").slice(0, 4900);
+}
+async function pushLine(token, to, text) {
+  const res = await fetch("https://api.line.me/v2/bot/message/push", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ to, messages: [{ type: "text", text }] }),
+    signal: AbortSignal.timeout(2e4)
+  });
+  if (!res.ok) throw new Error(`LINE push HTTP ${res.status} ${await res.text()}`);
+}
+
 // supabase/functions/ingest/index.ts
 var MIN_GAP_MIN = 8;
 function secretKey() {
@@ -603,5 +667,19 @@ Deno.serve(async () => {
   } catch (e) {
     alerts = { error: String(e.message ?? e) };
   }
-  return json({ ok: true, generated_at: snapshot.generated_at, saved, failed, alerts });
+  const adminId = Deno.env.get("LINE_ADMIN_USER_ID");
+  let health = {};
+  try {
+    const notes = await checkHealth(db, snapshot);
+    let line = notes.length ? "\u0E22\u0E31\u0E07\u0E44\u0E21\u0E48\u0E44\u0E14\u0E49\u0E15\u0E31\u0E49\u0E07\u0E04\u0E48\u0E32 LINE_ADMIN_USER_ID" : "\u0E1B\u0E01\u0E15\u0E34";
+    if (notes.length && token && adminId) {
+      const webUrl = Deno.env.get("WEB_URL");
+      await pushLine(token, adminId, formatHealth(notes, snapshot, webUrl ? new URL("/admin", webUrl).href : void 0));
+      line = "\u0E2A\u0E48\u0E07\u0E41\u0E25\u0E49\u0E27";
+    }
+    health = { notes: notes.map((n) => n.text), line };
+  } catch (e) {
+    health = { error: String(e.message ?? e) };
+  }
+  return json({ ok: true, generated_at: snapshot.generated_at, saved, failed, alerts, health });
 });

@@ -5,6 +5,7 @@
 import { collect } from "../../../ingest/core.mjs";
 import { dbConfig, store, upsert } from "../../../ingest/store.mjs";
 import { formatLine, sendLine, syncAlerts } from "../../../ingest/alerts.mjs";
+import { checkHealth, formatHealth, pushLine } from "../../../ingest/health.mjs";
 
 const MIN_GAP_MIN = 8;
 
@@ -65,5 +66,20 @@ Deno.serve(async () => {
   } catch (e) {
     alerts = { error: String((e as Error).message ?? e) };
   }
-  return json({ ok: true, generated_at: snapshot.generated_at, saved, failed, alerts });
+  // เฝ้าระวังระบบ: แจ้งผู้ดูแลคนเดียว (LINE_ADMIN_USER_ID) เมื่อแหล่งข้อมูลล่ม/ข้อมูลเก่า/ระบบหยุดไป และเมื่อกลับมาปกติ
+  const adminId = Deno.env.get("LINE_ADMIN_USER_ID");
+  let health: Record<string, unknown> = {};
+  try {
+    const notes = await checkHealth(db, snapshot);
+    let line = notes.length ? "ยังไม่ได้ตั้งค่า LINE_ADMIN_USER_ID" : "ปกติ";
+    if (notes.length && token && adminId) {
+      const webUrl = Deno.env.get("WEB_URL");
+      await pushLine(token, adminId, formatHealth(notes, snapshot, webUrl ? new URL("/admin", webUrl).href : undefined));
+      line = "ส่งแล้ว";
+    }
+    health = { notes: notes.map((n) => n.text), line };
+  } catch (e) {
+    health = { error: String((e as Error).message ?? e) };
+  }
+  return json({ ok: true, generated_at: snapshot.generated_at, saved, failed, alerts, health });
 });

@@ -1,0 +1,25 @@
+# เฝ้าระวังจากภายนอก: ถ้า Supabase หยุดดึงข้อมูลเกิน 1 ชม. จะส่ง LINE ถึงผู้ดูแลคนเดียว
+# ต้องตั้ง Secrets ใน GitHub: SUPABASE_URL, SUPABASE_SECRET_KEY, LINE_CHANNEL_ACCESS_TOKEN, LINE_ADMIN_USER_ID (ถ้ายังไม่ครบจะข้ามเฉย ๆ)
+name: watchdog
+
+on:
+  schedule:
+    - cron: '41 * * * *'   # ทุกชั่วโมง (GitHub อาจเลื่อนหรือข้ามบางรอบ)
+  workflow_dispatch: {}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: ตรวจว่าข้อมูลยังอัปเดต
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
+          LINE_ADMIN_USER_ID: ${{ secrets.LINE_ADMIN_USER_ID }}
+        run: node ingest/watchdog.mjs
