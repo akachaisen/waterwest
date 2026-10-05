@@ -35,12 +35,12 @@ npm run snapshot
 ## ขั้นที่ 2: ฐานข้อมูล + ดึงอัตโนมัติทุก 15 นาที
 - `supabase/schema.sql` ตาราง stations, readings, dam_daily, rain_forecast, sea_level, ingest_runs + view `latest_readings` · อ่านได้สาธารณะ เขียนได้เฉพาะ secret key
 - `ingest/store.mjs` บันทึกผ่าน Supabase REST แบบ upsert (รันซ้ำไม่เกิดข้อมูลซ้ำ) · ถ้าไม่ตั้งค่า env จะข้ามการบันทึก
-- `.github/workflows/ingest.yml` GitHub Actions รันทุก 15 นาที + กดรันเองได้ · สรุปผลแสดงในหน้า Actions
+- `.github/workflows/ingest.yml` GitHub Actions กดรันเองได้ (ปิดการรันตามเวลาแล้ว) · สรุปผลแสดงในหน้า Actions
 - ตรวจคุณภาพข้อมูล: ตัดค่าที่เป็นไปไม่ได้, เทียบปริมาณกับ กฟผ., เวลาในอนาคต → บันทึกเหตุผลในคอลัมน์ `qc`
 - วิธีตั้งค่า: [docs/SETUP_ขั้นที่2.md](docs/SETUP_ขั้นที่2.md)
 
 ## ตัวตั้งเวลาหลัก: Supabase Edge Function + Cron
-GitHub Actions cron บน repo นี้รันจริงแค่ทุก 4–5 ชม. จึงย้ายตัวตั้งเวลาหลักไปที่ Supabase (GitHub เก็บไว้เป็นตัวสำรอง)
+GitHub Actions cron บน repo นี้รันจริงแค่ทุก 4–5 ชม. จึงย้ายตัวตั้งเวลาหลักไปที่ Supabase · GitHub เหลือไว้กดรันเอง และมี `watchdog.yml` เฝ้าทุกชั่วโมง แจ้ง LINE ผู้ดูแลถ้า Supabase หยุด
 - `ingest/core.mjs` โค้ดรวบรวมข้อมูล ใช้ร่วมกันทั้ง Node และ Edge Function
 - `supabase/functions/ingest/index.ts` Edge Function — ไม่ต้องใช้คีย์เรียก (verify_jwt ปิด) แต่จะข้ามถ้ารอบล่าสุดยังไม่ถึง 8 นาที
 - สร้างไฟล์ deploy: `npm run build:function` → `supabase/functions/ingest/dist/index.js` (วางใน Dashboard → Edge Functions → ingest → Code)

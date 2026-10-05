@@ -1,11 +1,11 @@
-# ขั้นที่ 2: ดึงข้อมูลน้ำทุก 15 นาที แล้วบันทึกลง Supabase
+# ดึงข้อมูลน้ำแล้วบันทึกลง Supabase ด้วย Node — กดรันเองจากแท็บ Actions เท่านั้น
+# (ตัวตั้งเวลาหลักคือ Supabase Cron → Edge Function ingest · ปิดการรันตามเวลาตั้งแต่ 5 ต.ค. 2569
+#  เพราะรันซ้ำซ้อนและทำให้รอบของ Supabase ถูกข้าม — ถ้า Supabase หยุด watchdog.yml จะแจ้งผู้ดูแล)
 # ต้องตั้ง Secrets ใน GitHub: SUPABASE_URL, SUPABASE_SECRET_KEY
 name: ingest
 
 on:
-  schedule:
-    - cron: '7,22,37,52 * * * *'   # ทุก 15 นาที เลี่ยงนาที :00/:15 ที่ GitHub หนาแน่น (อาจเลื่อนได้บ้าง)
-  workflow_dispatch: {}      # กดรันเองได้จากแท็บ Actions
+  workflow_dispatch: {}
 
 concurrency:
   group: ingest
