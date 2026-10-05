@@ -1,7 +1,7 @@
 // จุดคงที่บนแผนที่: เขื่อน กล้อง CCTV และพื้นที่ที่ติดตาม
 
 // LINE Official Account สำหรับรับแจ้งเตือน (ID สาธารณะ ไม่ใช่ความลับ)
-export const LINE_OA_ID = "@834fsaeo";
+export const LINE_OA_ID = "@waterwest"; // Premium ID (ซื้อ 5 ต.ค. 2569) · ID เดิม @834fsaeo ยังใช้ได้
 
 export type Camera = {
   id: string;
