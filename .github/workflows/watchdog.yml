@@ -5,7 +5,12 @@ name: watchdog
 on:
   schedule:
     - cron: '41 * * * *'   # ทุกชั่วโมง (GitHub อาจเลื่อนหรือข้ามบางรอบ)
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      test:
+        description: 'ส่งข้อความทดสอบเข้า LINE ผู้ดูแล (นับโควตา 1 ข้อความ)'
+        type: boolean
+        default: false
 
 jobs:
   check:
@@ -22,4 +27,5 @@ jobs:
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
           LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
           LINE_ADMIN_USER_ID: ${{ secrets.LINE_ADMIN_USER_ID }}
+          WATCHDOG_TEST: ${{ inputs.test }}
         run: node ingest/watchdog.mjs

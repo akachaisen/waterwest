@@ -27,6 +27,18 @@ try {
 }
 
 if (!problem && ageMin > GAP_MIN) problem = `ไม่มีข้อมูลใหม่มา ${ageMin >= 120 ? (ageMin / 60).toFixed(1) + ' ชม.' : Math.round(ageMin) + ' นาที'} — Supabase Cron หรือ Edge Function อาจหยุดทำงาน`;
+const t = new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+// กดรันเองพร้อมเลือก test = ส่งข้อความทดสอบพร้อมสถานะปัจจุบัน (ไม่ว่าจะปกติหรือไม่)
+if (process.env.WATCHDOG_TEST === 'true') {
+  const status = problem ? `⚠️ ${problem}` : `✅ ปกติ: ข้อมูลล่าสุดเมื่อ ${Math.round(ageMin)} นาทีก่อน`;
+  await pushLine(token, adminId, `🛠 WaterWest · ทดสอบแจ้งผู้ดูแลระบบ
+${t} น.
+
+ถ้าได้รับข้อความนี้ แปลว่าระบบแจ้งผู้ดูแลส่งถึงแล้ว
+${status}`);
+  console.log('ส่งข้อความทดสอบแล้ว');
+  process.exit(0);
+}
 if (!problem) {
   console.log(`ปกติ: รอบล่าสุดเมื่อ ${Math.round(ageMin)} นาทีก่อน`);
   process.exit(0);
@@ -36,6 +48,5 @@ if (ageMin > 24 * 60 && new Date().getUTCHours() !== 1) {
   console.log(`ยังผิดปกติ (${problem}) — เตือนวันละครั้งตอน 08:00 น.`);
   process.exit(0);
 }
-const t = new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 await pushLine(token, adminId, `🛠 WaterWest · แจ้งผู้ดูแลระบบ\n${t} น.\n\n⚠️ ${problem}\n\nตรวจสอบ: https://supabase.com/dashboard/project/jvwxhxrtckfvflzrrsxe`);
 console.log(`แจ้งแล้ว: ${problem}`);
