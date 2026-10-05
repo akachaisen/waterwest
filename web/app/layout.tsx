@@ -14,7 +14,7 @@ export const metadata: Metadata = {
   title: { default: "WaterWest — ติดตามลุ่มน้ำแม่กลอง", template: "%s · WaterWest" },
   description: "สถานการณ์น้ำในลุ่มน้ำแม่กลอง ตั้งแต่เขื่อนวชิราลงกรณ ศรีนครินทร์ เขื่อนแม่กลอง ราชบุรี ถึงปากอ่าวสมุทรสงคราม",
   // ลิงก์รูปตัวอย่าง (opengraph-image.png) ต้องเป็น URL เต็ม เวลาแชร์ใน LINE/Facebook
-  metadataBase: new URL("https://waterwest.vercel.app"),
+  metadataBase: new URL("https://waterwest.info"),
   openGraph: {
     title: "WaterWest ลุ่มน้ำแม่กลอง",
     description: "ติดตามระดับน้ำและแจ้งเตือนน้ำท่วม จากเขื่อนวชิราลงกรณ และเขื่อนศรีนครินทร์ ถึงอ่าวไทย · อัปเดตทุก 15 นาที",
