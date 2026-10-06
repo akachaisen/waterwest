@@ -18,6 +18,11 @@ const SOURCE_NAME = {
 };
 
 const staleCount = (run) => (run.alerts ?? []).filter((a) => a.level === 'info').length;
+// สถานีกรมชลฯ หลายจุดหยุดส่งข้อมูลทุกคืน (ราว 03:00–06:00 น.) เป็นเรื่องปกติ — ไม่นับ "ข้อมูลเก่า" ในช่วง 00:00–07:59 น.
+// ถ้ายังเก่าต่อเนื่องหลัง 08:00 น. อีก ~1 ชม. จึงแจ้ง
+export const QUIET_UNTIL_H = 8;
+const thaiHour = (iso) => (new Date(iso).getUTCHours() + 7) % 24;
+const staleBad = (r) => thaiHour(r.started_at) >= QUIET_UNTIL_H && staleCount(r) >= STALE_LIMIT;
 const fmtGap = (min) => (min >= 120 ? `${(min / 60).toFixed(1)} ชม.` : `${Math.round(min)} นาที`);
 
 // window[0] = รอบนี้, window[1..] = รอบก่อนหน้า (ใหม่ → เก่า) · bad(run) บอกว่ารอบนั้นผิดปกติไหม
@@ -46,7 +51,7 @@ export function evaluateHealth(snapshot, previous) {
     if (t === 'up') notes.push({ kind: 'up', text: `${name} กลับมาใช้ได้แล้ว` });
   }
 
-  const t = transition(window, (r) => staleCount(r) >= STALE_LIMIT);
+  const t = transition(window, staleBad);
   if (t === 'down') notes.push({ kind: 'down', text: `สถานีข้อมูลเก่า (เกิน 3 ชม.) ${staleCount(current)} จุด ต่อเนื่อง ~1 ชม.` });
   if (t === 'up') notes.push({ kind: 'up', text: 'ข้อมูลสถานีกลับมาเป็นปัจจุบันแล้ว' });
   return notes;

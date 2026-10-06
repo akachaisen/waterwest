@@ -6,6 +6,7 @@ import type { Level } from "@/lib/types";
 import { bankText, fmtTime, trendText } from "@/lib/status";
 import { levelBg, levelDot, levelText } from "./ui";
 import { addSaved, useSavedAreas } from "./savedAreas";
+import { LINE_APP_HINT, locate, useInLineApp } from "./geo";
 
 type Summary = {
   href: string;
@@ -28,6 +29,7 @@ export function HomeArea() {
   const home = saved[0];
   const [data, setData] = useState<Summary | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
+  const inLine = useInLineApp();
 
   useEffect(() => {
     if (!home) return;
@@ -44,19 +46,14 @@ export function HomeArea() {
   }, [home]);
 
   const useLocation = () => {
-    if (!navigator.geolocation) return setMsg("โทรศัพท์หรือเบราว์เซอร์นี้หาตำแหน่งไม่ได้ กดเลือกตำบลแทน");
     setMsg("กำลังหาตำแหน่ง…");
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const r = await fetch(`/api/area-summary?lat=${pos.coords.latitude.toFixed(3)}&lon=${pos.coords.longitude.toFixed(3)}`);
-        if (!r.ok) return setMsg("ตำแหน่งของคุณอยู่นอกพื้นที่ที่ WaterWest ติดตาม (กาญจนบุรี ราชบุรี สมุทรสงคราม บ้านแพ้ว) กดเลือกตำบลแทน");
-        const d: Summary = await r.json();
-        addSaved({ href: d.href, name: d.name, sub: d.sub, label: "บ้านฉัน" });
-        setMsg(null);
-      },
-      () => setMsg("ไม่ได้รับอนุญาตให้ใช้ตำแหน่ง กดเลือกตำบลแทน"),
-      { timeout: 10000, maximumAge: 600000 },
-    );
+    locate(async (lat, lon) => {
+      const r = await fetch(`/api/area-summary?lat=${lat.toFixed(3)}&lon=${lon.toFixed(3)}`);
+      if (!r.ok) return setMsg("ตำแหน่งของคุณอยู่นอกพื้นที่ที่ WaterWest ติดตาม (กาญจนบุรี ราชบุรี สมุทรสงคราม บ้านแพ้ว) กดเลือกตำบลแทน");
+      const d: Summary = await r.json();
+      addSaved({ href: d.href, name: d.name, sub: d.sub, label: "บ้านฉัน" });
+      setMsg(null);
+    }, setMsg);
   };
 
   if (!home) {
@@ -72,7 +69,11 @@ export function HomeArea() {
             เลือกตำบล
           </Link>
         </div>
-        {msg && <p className="mt-2 text-sm text-orange" role="status">{msg}</p>}
+        {msg ? (
+          <p className="mt-2 text-sm text-orange" role="status">{msg}</p>
+        ) : (
+          inLine && <p className="mt-2 text-sm text-orange">{LINE_APP_HINT}</p>
+        )}
         <p className="mt-2 text-xs text-muted">ตำแหน่งใช้หาตำบลที่ใกล้ที่สุดเท่านั้น ไม่เก็บพิกัดของคุณ · พื้นที่ที่เลือกจำไว้ในโทรศัพท์เครื่องนี้</p>
       </section>
     );

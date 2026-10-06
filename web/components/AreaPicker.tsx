@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { removeSaved, useSavedAreas } from "./savedAreas";
+import { locate } from "./geo";
 
 type T = { id: string; t: string; te: string; a: string; p: string };
 type P = { slug: string; name: string; sub: string };
@@ -28,13 +29,8 @@ export function AreaPicker({ tambons, presets }: { tambons: T[]; presets: P[] })
   }, [q, tambons]);
 
   const useGps = () => {
-    if (!navigator.geolocation) { setGpsMsg("เบราว์เซอร์นี้ไม่รองรับการหาตำแหน่ง"); return; }
     setGpsMsg("กำลังหาตำแหน่ง…");
-    navigator.geolocation.getCurrentPosition(
-      (pos) => router.push(pinHref(pos.coords.latitude, pos.coords.longitude)),
-      () => setGpsMsg("ไม่ได้รับอนุญาตให้ใช้ตำแหน่ง"),
-      { timeout: 10000 },
-    );
+    locate((lat, lon) => router.push(pinHref(lat, lon)), setGpsMsg);
   };
 
   return (

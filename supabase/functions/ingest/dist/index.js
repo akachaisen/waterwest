@@ -588,6 +588,9 @@ var SOURCE_NAME = {
   cctv: "\u0E01\u0E25\u0E49\u0E2D\u0E07 CCTV"
 };
 var staleCount = (run) => (run.alerts ?? []).filter((a) => a.level === "info").length;
+var QUIET_UNTIL_H = 8;
+var thaiHour = (iso) => (new Date(iso).getUTCHours() + 7) % 24;
+var staleBad = (r) => thaiHour(r.started_at) >= QUIET_UNTIL_H && staleCount(r) >= STALE_LIMIT;
 var fmtGap = (min) => min >= 120 ? `${(min / 60).toFixed(1)} \u0E0A\u0E21.` : `${Math.round(min)} \u0E19\u0E32\u0E17\u0E35`;
 function transition(window, bad) {
   if (window.length < DOWN_RUNS + 1) return null;
@@ -609,7 +612,7 @@ function evaluateHealth(snapshot, previous) {
     if (t2 === "down") notes.push({ kind: "down", text: `${name} \u0E43\u0E0A\u0E49\u0E44\u0E21\u0E48\u0E44\u0E14\u0E49\u0E15\u0E48\u0E2D\u0E40\u0E19\u0E37\u0E48\u0E2D\u0E07 ~1 \u0E0A\u0E21. (${String(status).slice(0, 80)})` });
     if (t2 === "up") notes.push({ kind: "up", text: `${name} \u0E01\u0E25\u0E31\u0E1A\u0E21\u0E32\u0E43\u0E0A\u0E49\u0E44\u0E14\u0E49\u0E41\u0E25\u0E49\u0E27` });
   }
-  const t = transition(window, (r) => staleCount(r) >= STALE_LIMIT);
+  const t = transition(window, staleBad);
   if (t === "down") notes.push({ kind: "down", text: `\u0E2A\u0E16\u0E32\u0E19\u0E35\u0E02\u0E49\u0E2D\u0E21\u0E39\u0E25\u0E40\u0E01\u0E48\u0E32 (\u0E40\u0E01\u0E34\u0E19 3 \u0E0A\u0E21.) ${staleCount(current)} \u0E08\u0E38\u0E14 \u0E15\u0E48\u0E2D\u0E40\u0E19\u0E37\u0E48\u0E2D\u0E07 ~1 \u0E0A\u0E21.` });
   if (t === "up") notes.push({ kind: "up", text: "\u0E02\u0E49\u0E2D\u0E21\u0E39\u0E25\u0E2A\u0E16\u0E32\u0E19\u0E35\u0E01\u0E25\u0E31\u0E1A\u0E21\u0E32\u0E40\u0E1B\u0E47\u0E19\u0E1B\u0E31\u0E08\u0E08\u0E38\u0E1A\u0E31\u0E19\u0E41\u0E25\u0E49\u0E27" });
   return notes;
