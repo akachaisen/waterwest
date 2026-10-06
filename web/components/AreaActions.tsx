@@ -43,6 +43,15 @@ export function AreaActions({ href, name, sub }: { href: string; name: string; s
       >
         {saved ? "★ บันทึกแล้ว" : "☆ บันทึกพื้นที่นี้"}
       </button>
+      <a
+        href={`https://line.me/R/share?text=${encodeURIComponent(`สถานการณ์น้ำ ${name} (${sub}) — WaterWest
+https://waterwest.info${href}`)}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="rounded-full bg-[#06c755] px-4 py-2 text-sm font-semibold text-white"
+      >
+        แชร์ทาง LINE
+      </a>
       <button type="button" onClick={share} className="rounded-full border border-border px-4 py-2 text-sm font-semibold hover:border-accent">
         แชร์ลิงก์
       </button>

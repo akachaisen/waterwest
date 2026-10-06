@@ -4,6 +4,8 @@ import { latestMaeklongRelease } from "@/lib/announcements";
 import { getRainObs } from "@/lib/rainObs";
 import { RainObsCard } from "@/components/RainObsCard";
 import { HomeArea } from "@/components/HomeArea";
+import { AskBox, type AskItem } from "@/components/AskBox";
+import { PRESETS, TAMBONS } from "@/lib/area";
 import { bankText, fmt, fmtTime, LEVEL_TEXT, overall, worst } from "@/lib/status";
 import { SEGMENTS } from "@/lib/route";
 import type { Dam, Level, Station } from "@/lib/types";
@@ -35,11 +37,23 @@ export default async function Home() {
   const vrk = s.dams.find((d) => d.id === "200402");
   const snr = s.dams.find((d) => d.id === "200401");
   const alerts = s.alerts.filter((a) => a.level !== "info");
+  const presets = PRESETS.map((p) => {
+    const t = TAMBONS.find((x) => x.id === p.tambonId)!;
+    return { href: `/area/${p.slug}`, name: p.name, sub: `ต.${t.t} อ.${t.a} จ.${t.p}` };
+  });
+  const quick = presets.slice(0, 8);
+  const askItems: AskItem[] = [
+    ...presets.map((p) => ({ href: p.href, title: p.name, sub: p.sub, kind: "area" as const })),
+    ...TAMBONS.map((t) => ({ href: `/area/${t.id}`, title: `ต.${t.t}`, sub: `อ.${t.a} จ.${t.p}`, kind: "area" as const })),
+    ...s.stations.map((x) => ({ href: `/stations/${encodeURIComponent(x.code)}`, title: x.name, sub: `สถานีวัดน้ำ ${x.code}`, kind: "station" as const })),
+  ];
+  const examples = askItems.filter((x) => ["/area/chedihak-moo3", "/area/ratchaburi-city", "/area/ban-pong", "/area/amphawa"].includes(x.href));
 
   return (
     <div className="space-y-5">
-      {/* แถวบ้านคุณ (จำไว้ในเครื่อง) */}
-      <HomeArea />
+      {/* แถวบ้านคุณ (จำไว้ในเครื่อง) + ถามแถวบ้าน */}
+      <HomeArea quick={quick} />
+      <AskBox items={askItems} examples={examples} />
 
       {/* สถานะรวม */}
       <section className={`rounded-2xl border border-border p-5 ${levelBg(status.level)}`}>

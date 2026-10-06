@@ -10,6 +10,7 @@ import { bankText, fmt, fmtTime, LEVEL_TEXT } from "@/lib/status";
 import type { Level } from "@/lib/types";
 import { Badge, Card, levelBg, levelDot, levelText, Measured, SectionTitle, Trend } from "@/components/ui";
 import { AreaActions } from "@/components/AreaActions";
+import { HouseThreshold } from "@/components/HouseThreshold";
 import { PROVINCE_DDPM } from "@/lib/contacts";
 
 export const revalidate = 300;
@@ -96,6 +97,9 @@ export default async function AreaPage({ params, searchParams }: Props) {
           ))}
         </ul>
       </section>
+
+      {/* เกณฑ์บ้านฉัน (เก็บในเครื่อง) — เทียบกับสถานีที่ใช้ประเมินพื้นที่นี้ */}
+      {r.ref && <HouseThreshold code={r.ref.code} name={r.ref.name} diffBank={r.ref.diffBank} time={r.ref.time} />}
 
       <div className="grid gap-3 md:grid-cols-2">
         {/* แม่น้ำและประเภทพื้นที่ */}

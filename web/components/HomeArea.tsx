@@ -7,6 +7,7 @@ import { bankText, fmtTime, trendText } from "@/lib/status";
 import { levelBg, levelDot, levelText } from "./ui";
 import { addSaved, useSavedAreas } from "./savedAreas";
 import { LINE_APP_HINT, locate, useInLineApp } from "./geo";
+import { remaining, remainingText, useThreshold } from "./thresholds";
 
 type Summary = {
   href: string;
@@ -24,12 +25,17 @@ const hhmm = (iso: string) =>
   new Date(iso).toLocaleString("th-TH", { timeZone: "Asia/Bangkok", weekday: "short", hour: "2-digit", minute: "2-digit" }) + " น.";
 
 // การ์ดแรกของหน้าแรก: "แถวบ้านคุณ" — จำพื้นที่ไว้ในเครื่องนี้ (ใช้รายการพื้นที่ที่บันทึกไว้ อันแรก)
-export function HomeArea() {
+export type QuickArea = { href: string; name: string; sub: string };
+
+export function HomeArea({ quick }: { quick: QuickArea[] }) {
   const saved = useSavedAreas();
   const home = saved[0];
   const [data, setData] = useState<Summary | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const inLine = useInLineApp();
+  const [outside, setOutside] = useState(false);
+  const th = useThreshold(data?.ref?.code);
+  const rem = remaining(data?.ref?.diffBank ?? null, th);
 
   useEffect(() => {
     if (!home) return;
@@ -49,7 +55,10 @@ export function HomeArea() {
     setMsg("กำลังหาตำแหน่ง…");
     locate(async (lat, lon) => {
       const r = await fetch(`/api/area-summary?lat=${lat.toFixed(3)}&lon=${lon.toFixed(3)}`);
-      if (!r.ok) return setMsg("ตำแหน่งของคุณอยู่นอกพื้นที่ที่ WaterWest ติดตาม (กาญจนบุรี ราชบุรี สมุทรสงคราม บ้านแพ้ว) กดเลือกตำบลแทน");
+      if (!r.ok) {
+        setOutside(true);
+        return setMsg("ตำแหน่งตอนนี้อยู่นอกพื้นที่ที่ WaterWest ติดตาม (กาญจนบุรี ราชบุรี สมุทรสงคราม บ้านแพ้ว) — เลือกพื้นที่บ้านของคุณด้านล่าง หรือกดเลือกตำบล");
+      }
       const d: Summary = await r.json();
       addSaved({ href: d.href, name: d.name, sub: d.sub, label: "บ้านฉัน" });
       setMsg(null);
@@ -73,6 +82,20 @@ export function HomeArea() {
           <p className="mt-2 text-sm text-orange" role="status">{msg}</p>
         ) : (
           inLine && <p className="mt-2 text-sm text-orange">{LINE_APP_HINT}</p>
+        )}
+        {outside && (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {quick.map((a) => (
+              <button
+                key={a.href}
+                type="button"
+                onClick={() => addSaved({ ...a, label: "บ้านฉัน" })}
+                className="rounded-full border border-border px-3 py-1.5 text-sm font-semibold hover:border-accent hover:text-accent"
+              >
+                {a.name}
+              </button>
+            ))}
+          </div>
         )}
         <p className="mt-2 text-xs text-muted">ตำแหน่งใช้หาตำบลที่ใกล้ที่สุดเท่านั้น ไม่เก็บพิกัดของคุณ · พื้นที่ที่เลือกจำไว้ในโทรศัพท์เครื่องนี้</p>
       </section>
@@ -111,6 +134,9 @@ export function HomeArea() {
             </p>
           ) : (
             <p className="text-sm text-muted">ไม่มีสถานีวัดน้ำที่ใช้ประเมินพื้นที่นี้ได้</p>
+          )}
+          {rem && (
+            <p className={`rounded-lg bg-surface px-3 py-1.5 text-sm font-semibold ${levelText(rem.level)}`}>เกณฑ์บ้านฉัน: {remainingText(rem.m)}</p>
           )}
           {data.eta && (
             <p className="text-sm">

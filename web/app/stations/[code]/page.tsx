@@ -7,6 +7,7 @@ import { bankText, changeText, fmt, fmtTime } from "@/lib/status";
 import { KM_FROM_MAEKLONG_DAM, SEGMENTS, travelHours } from "@/lib/route";
 import { Badge, Card, levelText, Measured, Trend } from "@/components/ui";
 import { LineChart } from "@/components/LineChart";
+import { HouseThreshold } from "@/components/HouseThreshold";
 
 export const revalidate = 300;
 
@@ -67,6 +68,7 @@ export default async function StationPage({ params }: Params) {
         </Stat>
       </div>
       <Measured time={st.time} ageMin={st.ageMin} stale={st.stale} />
+      {st.diffBank !== null && <HouseThreshold code={st.code} name={st.name} diffBank={st.diffBank} time={st.time} />}
 
       <Card>
         <h2 className="mb-1 text-base font-semibold">ระดับน้ำเทียบตลิ่ง 7 วัน</h2>
