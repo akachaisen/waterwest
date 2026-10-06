@@ -11,9 +11,10 @@ import type { Alert, RainPoint, Snapshot, Station } from "./types";
 type RawStation = {
   code: string; name: string; seg: string; is_key: boolean; lat?: number | null; lon?: number | null; source: string | null; time: string | null;
   wl: number | null; diff_bank: number | null; q: number | null; capacity: number | null; trend: string | null;
-  sign?: number | null; change1h?: number | null;
+  sign?: number | null; change1h?: number | null; change24h?: number | null;
 };
 
+const ALERT_RANK: Record<string, number> = { red: 3, orange: 2, yellow: 1 };
 const num = (v: unknown): number | null => (v === null || v === undefined || v === "" ? null : Number(v));
 
 function toStation(r: RawStation, now: number): Station {
@@ -41,6 +42,7 @@ function toStation(r: RawStation, now: number): Station {
     trend: r.trend ?? trendOf(r.change1h ?? null),
     sign: num(r.sign),
     change1h: r.change1h ?? null,
+    change24h: r.change24h ?? null,
     ...classify(diffBank),
   };
 }
@@ -94,7 +96,7 @@ async function fromSupabase(url: string, key: string): Promise<Snapshot> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   type Any = any;
   const since = new Date(Date.now() - 5 * 3600e3).toISOString();
-  const [latest, runs, dams, rain, sea, coords, recent] = await Promise.all([
+  const [latest, runs, dams, rain, sea, coords, recent, alertState] = await Promise.all([
     get<Any[]>("latest_readings?select=*"),
     get<Any[]>("ingest_runs?select=*&order=started_at.desc&limit=1"),
     get<Any[]>("dam_daily?select=*&order=date.desc&limit=6"),
@@ -103,6 +105,8 @@ async function fromSupabase(url: string, key: string): Promise<Snapshot> {
     get<Any[]>("stations?select=code,lat,lon"),
     // ค่าย้อนหลัง 5 ชม. ไว้เทียบกับราว 1 ชม.ก่อน
     get<Any[]>(`readings?select=station_code,source,measured_at,diff_bank&measured_at=gte.${since}&diff_bank=not.is.null&order=measured_at.asc&limit=3000`).catch(() => []),
+    // สัญญาณเตือนชุดเดียวกับหน้าเตือนภัยและ LINE (กฎครบ: ล้นตลิ่ง น้ำขึ้นเร็ว ฝน น้ำทะเลหนุน ฯลฯ)
+    get<Any[]>("alert_state?select=key,level,text,first_seen&active=eq.true&limit=200").catch(() => null),
   ]);
   const hist = new Map<string, { t: number; v: number }[]>();
   for (const r of recent) {
@@ -112,6 +116,18 @@ async function fromSupabase(url: string, key: string): Promise<Snapshot> {
     hist.set(k, a);
   }
   const ll = new Map(coords.map((c) => [c.code, c]));
+  // เปลี่ยนใน 24 ชม.: เทียบกับค่าเฉลี่ยชั่วโมงเดียวกันของเมื่อวาน (แบบเดียวกับกราฟหน้าสถานี)
+  const dayAgo = (t: string) => new Date(Math.floor((new Date(t).getTime() - 864e5) / 36e5) * 36e5).toISOString();
+  const hours = [...new Set(latest.filter((r) => r.measured_at).map((r) => dayAgo(r.measured_at)))];
+  const prevDay = hours.length
+    ? await get<Any[]>(`readings_hourly?select=station_code,hour,diff_bank&hour=in.(${hours.map((h) => `"${h}"`).join(",")})`).catch(() => [])
+    : [];
+  const prevBy = new Map(prevDay.map((r) => [`${r.station_code}|${new Date(r.hour).toISOString()}`, num(r.diff_bank)]));
+  const change24h = (r: Any): number | null => {
+    const old = r.measured_at ? prevBy.get(`${r.station_code}|${dayAgo(r.measured_at)}`) : null;
+    const v = num(r.diff_bank);
+    return old == null || v === null ? null : Math.round((v - old) * 100) / 100;
+  };
   const now = Date.now();
   const run = runs[0];
 
@@ -131,13 +147,15 @@ async function fromSupabase(url: string, key: string): Promise<Snapshot> {
     origin: "supabase",
     generatedAt: run?.started_at ?? new Date().toISOString(),
     stations: latest.map((r) =>
-      toStation({ code: r.station_code, name: r.name, seg: r.seg, is_key: r.is_key, lat: ll.get(r.station_code)?.lat, lon: ll.get(r.station_code)?.lon, source: r.source, time: r.measured_at, wl: r.wl, diff_bank: r.diff_bank, q: r.q, capacity: r.capacity, trend: r.trend, sign: r.sign, change1h: change1h(hist.get(`${r.station_code}|${r.source}`), r.measured_at, r.diff_bank) }, now),
+      toStation({ code: r.station_code, name: r.name, seg: r.seg, is_key: r.is_key, lat: ll.get(r.station_code)?.lat, lon: ll.get(r.station_code)?.lon, source: r.source, time: r.measured_at, wl: r.wl, diff_bank: r.diff_bank, q: r.q, capacity: r.capacity, trend: r.trend, sign: r.sign, change1h: change1h(hist.get(`${r.station_code}|${r.source}`), r.measured_at, r.diff_bank), change24h: change24h(r) }, now),
     ),
     dams: damRows.map((d) =>
       damDerived({ id: d.dam_id, name: d.name, date: d.date, volume: Number(d.volume), normal_storage: Number(d.normal_storage), pct: Number(d.pct), inflow_mcm: Number(d.inflow_mcm), outflow_mcm: Number(d.outflow_mcm) }),
     ),
     maeklongQ: run?.maeklong_q ? { q: Number(run.maeklong_q), time: latest.find((r) => r.station_code === "K.55A")?.measured_at ?? null } : null,
-    alerts: (run?.alerts ?? []) as Alert[],
+    alerts: alertState
+      ? alertState.map((a) => ({ level: a.level, text: a.text })).sort((a, b) => ALERT_RANK[b.level] - ALERT_RANK[a.level])
+      : ((run?.alerts ?? []) as Alert[]),
     rain: rainPoints,
     seaPeak: peak ? { m: Number(peak.m), time: peak.at } : null,
     sources: run?.sources ?? {},

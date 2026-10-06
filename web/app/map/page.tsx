@@ -3,21 +3,23 @@ import { getSnapshot } from "@/lib/data";
 import { fmt, fmtTime } from "@/lib/status";
 import { CAMERAS, PLACES } from "@/lib/places";
 import { levelDot } from "@/components/ui";
-import { RiverMap, type MapPlace, type MapStation } from "@/components/RiverMap";
+import type { MapPlace, MapStation } from "@/components/RiverMap";
+import { MapExplorer } from "@/components/MapExplorer";
 
 export const revalidate = 300;
 export const metadata: Metadata = { title: "แผนที่" };
 
-type Props = { searchParams: Promise<{ radar?: string }> };
+type Props = { searchParams: Promise<{ radar?: string; s?: string }> };
 
 export default async function MapPage({ searchParams }: Props) {
-  const { radar } = await searchParams;
+  const { radar, s: focus } = await searchParams;
   const s = await getSnapshot();
   const stations: MapStation[] = s.stations
     .filter((x) => x.lat !== null && x.lon !== null)
     .map((x) => ({
       code: x.code, name: x.name, lat: x.lat!, lon: x.lon!, level: x.level, label: x.label,
       diffBank: x.diffBank, q: x.q, time: x.time, isKey: x.isKey, stale: x.stale,
+      wl: x.wl, change1h: x.change1h, change24h: x.change24h, ageMin: x.ageMin, sign: x.sign, source: x.source,
     }));
   const places: MapPlace[] = PLACES.map((p) => {
     const dam = p.damId ? s.dams.find((d) => d.id === p.damId) : undefined;
@@ -50,7 +52,7 @@ export default async function MapPage({ searchParams }: Props) {
         <li className="flex items-center gap-1.5"><span className="size-2.5 rounded-sm bg-accent" aria-hidden />เขื่อน</li>
         <li className="flex items-center gap-1.5"><span className="size-2.5 rounded-full border-2 border-orange" aria-hidden />พื้นที่ที่ติดตาม</li>
       </ul>
-      <RiverMap stations={stations} places={places} showRadar={radar === "1"} />
+      <MapExplorer stations={stations} places={places} showRadar={radar === "1"} initial={focus ?? null} />
       <p className="text-xs text-muted">
         แผนที่ © ผู้ร่วมพัฒนา OpenStreetMap · ตำแหน่งสถานีจาก ThaiWater / กรมชลประทาน · หมุดเจดีย์หักอยู่ที่โบราณสถานเจดีย์หัก ไม่ใช่บ้านเลขที่
       </p>

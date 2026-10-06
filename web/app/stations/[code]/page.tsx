@@ -3,9 +3,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getSnapshot } from "@/lib/data";
 import { getStationHistory, summarize } from "@/lib/history";
-import { bankText, changeText, fmt, fmtTime } from "@/lib/status";
+import { bankText, fmt, fmtTime, SOURCE_NAME } from "@/lib/status";
 import { KM_FROM_MAEKLONG_DAM, SEGMENTS, travelHours } from "@/lib/route";
-import { Badge, Card, DdpmSign, levelText, Measured, Trend } from "@/components/ui";
+import { Badge, Card } from "@/components/ui";
+import { StationHero } from "@/components/StationHero";
 import { LineChart } from "@/components/LineChart";
 import { HouseThreshold } from "@/components/HouseThreshold";
 import { CameraGrid } from "@/components/CameraGrid";
@@ -48,29 +49,25 @@ export default async function StationPage({ params }: Params) {
           <h1 className="text-xl font-bold sm:text-2xl">{st.name}</h1>
           <p className="mt-0.5 text-sm text-muted">
             {st.code}
-            {st.source && ` · ${st.source}`}
+            {st.source && ` · ${SOURCE_NAME[st.source] ?? st.source}`}
             {km !== undefined && ` · ${km} กม. จากเขื่อนแม่กลอง (มวลน้ำถึง ~${fmt(travelHours(km))} ชม.)`}
           </p>
         </div>
         <Badge level={st.stale ? "unknown" : st.level}>{st.stale ? "ข้อมูลเก่า" : st.label}</Badge>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Stat label="เทียบตลิ่งตอนนี้" value={st.diffBank === null ? "-" : bankText(st.diffBank)} tone={levelText(st.level)}>
-          <Trend trend={st.trend} />
-        </Stat>
+      <StationHero s={st} showQ={false} />
+
+      <div className="grid grid-cols-2 gap-3">
         <Stat label="สูงสุดใน 7 วัน" value={sd ? bankText(sd.max.v) : "-"}>
           {sd && <span className="text-xs text-muted">{fmtTime(new Date(sd.max.t).toISOString())}</span>}
         </Stat>
-        <Stat label="เปลี่ยนใน 24 ชม." value={sd?.change24h != null ? changeText(sd.change24h) : "-"} />
         <Stat label="ปริมาณน้ำ" value={st.q === null ? "-" : `${fmt(st.q)}`}>
           <span className="text-xs text-muted">
             ลบ.ม./วิ{st.capacity ? ` · ความจุลำน้ำ ${fmt(st.capacity)} (${st.qPct}%)` : ""}
           </span>
         </Stat>
       </div>
-      <Measured time={st.time} ageMin={st.ageMin} stale={st.stale} />
-      {!st.stale && <DdpmSign sign={st.sign} />}
       {st.diffBank !== null && <HouseThreshold code={st.code} name={st.name} diffBank={st.diffBank} time={st.time} />}
       {DDPM_CAMERAS.some((c) => c.station === st.code) && (
         <section className="space-y-2">

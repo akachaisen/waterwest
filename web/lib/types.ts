@@ -19,6 +19,7 @@ export type Station = {
   trend: string | null;
   sign: number | null; // ป้ายระดับของ ปภ. 1–5
   change1h: number | null; // ระดับเปลี่ยนจากราว 1 ชม.ก่อน (ม.)
+  change24h: number | null; // ระดับเปลี่ยนจาก 24 ชม.ก่อน (ค่าเฉลี่ยรายชั่วโมง)
   level: Level;
   label: string;
 };

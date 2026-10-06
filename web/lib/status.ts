@@ -90,6 +90,9 @@ export function changeSummary(stations: Station[]) {
   return { total: stations.length, live: live.length, compared: cmp.length, up: n("เพิ่มขึ้น"), down: n("ลดลง"), flat: n("ทรงตัว") };
 }
 
+// ชื่อหน่วยงานของแหล่งข้อมูล (แสดงผู้ใช้)
+export const SOURCE_NAME: Record<string, string> = { "RID-HYD": "กรมชลประทาน", "RID-SWOC": "กรมชลประทาน", SWOC: "กรมชลประทาน", ThaiWater: "สสน. (ThaiWater)", DDPM: "ปภ.", EGAT: "กฟผ." };
+
 export function fmt(n: number | null | undefined, d = 0): string {
   if (n === null || n === undefined || Number.isNaN(n)) return "-";
   return Number(n).toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });

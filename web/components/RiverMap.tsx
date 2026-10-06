@@ -2,7 +2,9 @@
 
 import "leaflet/dist/leaflet.css";
 import { useEffect, useRef, useState } from "react";
-import type { Map as LMap, LayerGroup } from "leaflet";
+import type { Map as LMap, LayerGroup, CircleMarker } from "leaflet";
+import { gaugeSvg } from "@/lib/gauge";
+import { SOURCE_NAME as SOURCE } from "@/lib/status";
 
 export type MapStation = {
   code: string;
@@ -16,6 +18,12 @@ export type MapStation = {
   time: string | null;
   isKey: boolean;
   stale: boolean;
+  wl: number | null;
+  change1h: number | null;
+  change24h: number | null;
+  ageMin: number | null;
+  sign: number | null;
+  source: string | null;
 };
 export type MapPlace = {
   id: string;
@@ -40,6 +48,15 @@ function el(tag: string, text?: string, style?: string, children: Node[] = []) {
   return e;
 }
 
+const bankShort = (d: number | null) =>
+  d === null ? "-" : Math.abs(d) < 0.005 ? "เท่าตลิ่ง" : d > 0 ? `ล้นตลิ่ง ${d.toFixed(2)}` : `ต่ำกว่า ${(-d).toFixed(2)}`;
+const bankLong = (d: number | null) =>
+  d === null ? "ไม่มีค่าเทียบตลิ่ง" : Math.abs(d) < 0.005 ? "ระดับเท่าตลิ่ง" : d > 0 ? `สูงกว่าตลิ่ง ${d.toFixed(2)} ม.` : `ต่ำกว่าตลิ่ง ${(-d).toFixed(2)} ม.`;
+const changeLine = (d: number | null, span: string) =>
+  d === null ? null : Math.abs(d) < 0.005 ? `→ เท่าเดิมใน ${span}` : d > 0 ? `↑ ขึ้น ${d.toFixed(2)} ม. ใน ${span}` : `↓ ลง ${(-d).toFixed(2)} ม. ใน ${span}`;
+const ago = (min: number | null) =>
+  min === null ? "" : min < 60 ? `${Math.max(1, Math.round(min))} นาทีก่อน` : min < 48 * 60 ? `${(min / 60).toFixed(min < 600 ? 1 : 0)} ชม.ก่อน` : `${Math.round(min / 1440)} วันก่อน`;
+
 function distanceKm(a: [number, number], b: [number, number]) {
   const R = 6371;
   const dLat = ((b[0] - a[0]) * Math.PI) / 180;
@@ -48,8 +65,20 @@ function distanceKm(a: [number, number], b: [number, number]) {
   return 2 * R * Math.asin(Math.sqrt(s));
 }
 
-export function RiverMap({ stations, places, showRadar = false }: { stations: MapStation[]; places: MapPlace[]; showRadar?: boolean }) {
+type Props = {
+  stations: MapStation[];
+  places: MapPlace[];
+  showRadar?: boolean;
+  focus?: string | null; // รหัสสถานีที่เปิดค้างไว้ตอนโหลด (?s=)
+  onSelect?: (code: string) => void;
+};
+
+export function RiverMap({ stations, places, showRadar = false, focus = null, onSelect }: Props) {
   const box = useRef<HTMLDivElement>(null);
+  const selectRef = useRef(onSelect);
+  useEffect(() => {
+    selectRef.current = onSelect;
+  }, [onSelect]);
   const mapRef = useRef<LMap | null>(null);
   const meRef = useRef<LayerGroup | null>(null);
   const [near, setNear] = useState<string | null>(null);
@@ -72,6 +101,7 @@ export function RiverMap({ stations, places, showRadar = false }: { stations: Ma
       }).addTo(map);
 
       const stationLayer = L.layerGroup();
+      const markers = new Map<string, CircleMarker>();
       for (const s of stations) {
         const lv = s.stale ? "unknown" : s.level;
         const m = L.circleMarker([s.lat, s.lon], {
@@ -81,19 +111,29 @@ export function RiverMap({ stations, places, showRadar = false }: { stations: Ma
           fillColor: color(lv),
           fillOpacity: 1,
         });
-        const link = el("a", "ดูกราฟ 7 วัน →", "font-weight:600");
+        // ป๊อปอัป: ไม้วัด + ระดับเทียบตลิ่ง + การเปลี่ยนแปลง + เวลา (สร้างด้วย DOM; SVG มีแต่ตัวเลข)
+        const gauge = el("div", undefined, "flex-shrink:0;color:inherit");
+        gauge.innerHTML = gaugeSvg({ wl: s.wl, diffBank: s.diffBank, color: color("series-1"), size: "sm" });
+        const link = el("a", "ดูกราฟและรายละเอียด ›", "font-weight:600");
         link.setAttribute("href", `/stations/${encodeURIComponent(s.code)}`);
-        m.bindPopup(
-          el("div", undefined, "font-family:inherit;min-width:180px", [
-            el("div", s.name, "font-weight:700"),
-            el("div", s.code, "color:#64748b;font-size:12px"),
-            el("div", `${s.stale ? "ข้อมูลเก่า" : s.label} · เทียบตลิ่ง ${s.diffBank === null ? "-" : (s.diffBank > 0 ? "+" : "") + s.diffBank.toFixed(2) + " ม."}`, `margin-top:4px;color:${color(lv)};font-weight:600`),
-            ...(s.q !== null ? [el("div", `ปริมาณ ${Math.round(s.q).toLocaleString()} ลบ.ม./วิ`)] : []),
-            el("div", `วัดเมื่อ ${fmtTime(s.time)}`, "color:#64748b;font-size:12px"),
-            el("div", undefined, "margin-top:4px", [link]),
-          ]),
-        );
-        m.bindTooltip(s.name, { direction: "top", offset: [0, -6] });
+        const lines: Node[] = [
+          el("div", `${s.code} · ${s.name}`, "font-weight:700;line-height:1.3"),
+          el("div", s.stale ? `ข้อมูลเก่า · ${bankLong(s.diffBank)}` : bankLong(s.diffBank), `margin-top:3px;color:${color(lv)};font-weight:700;font-size:14px`),
+        ];
+        for (const c of [changeLine(s.change24h, "24 ชม."), s.change24h === null ? changeLine(s.change1h, "1 ชม.") : null]) if (c) lines.push(el("div", c));
+        if (s.q !== null) lines.push(el("div", `ปริมาณ ${Math.round(s.q).toLocaleString()} ลบ.ม./วิ`));
+        lines.push(el("div", `${s.source ? (SOURCE[s.source] ?? s.source) + " · " : ""}${ago(s.ageMin) || fmtTime(s.time)}`, "color:#64748b;font-size:12px"));
+        lines.push(el("div", undefined, "margin-top:4px", [link]));
+        m.bindPopup(el("div", undefined, "font-family:inherit;display:flex;gap:10px;align-items:center;min-width:210px", [gauge, el("div", undefined, "min-width:0", lines)]));
+        // ป้ายใต้หมุด (แสดงเมื่อซูมเข้าใกล้ — ดู zoomend ด้านล่าง)
+        m.bindTooltip(`${s.code} ${s.stale ? "ข้อมูลเก่า" : bankShort(s.diffBank)}`, {
+          permanent: true,
+          direction: "bottom",
+          offset: [0, 6],
+          className: `wl-label wl-${lv}`,
+        });
+        m.on("click", () => selectRef.current?.(s.code));
+        markers.set(s.code, m);
         stationLayer.addLayer(m);
       }
 
@@ -144,7 +184,14 @@ export function RiverMap({ stations, places, showRadar = false }: { stations: Ma
       if (cancelled) return;
       L.control.layers(undefined, overlays, { collapsed: !showRadar }).addTo(map);
       const pts = [...stations.map((s) => [s.lat, s.lon] as [number, number]), ...places.map((p) => [p.lat, p.lon] as [number, number])];
-      map.fitBounds(L.latLngBounds(pts), { padding: [20, 20] });
+      const f = focus ? stations.find((x) => x.code === focus) : undefined;
+      if (f) map.setView([f.lat, f.lon], 12, { animate: false });
+      else map.fitBounds(L.latLngBounds(pts), { padding: [20, 20] });
+      // ป้ายใต้หมุดแสดงเมื่อซูมระดับ 10 ขึ้นไป (ภาพรวมทั้งลุ่มน้ำจะได้ไม่รก)
+      const toggleLabels = () => box.current?.classList.toggle("wl-labels-off", map.getZoom() < 10);
+      map.on("zoomend", toggleLabels);
+      toggleLabels();
+      if (f) markers.get(f.code)?.openPopup();
       meRef.current = L.layerGroup().addTo(map);
     })();
     return () => {
@@ -152,7 +199,7 @@ export function RiverMap({ stations, places, showRadar = false }: { stations: Ma
       mapRef.current?.remove();
       mapRef.current = null;
     };
-  }, [stations, places, showRadar]);
+  }, [stations, places, showRadar, focus]);
 
   // ตำแหน่งของผู้ใช้ใช้ในเครื่องเท่านั้น ไม่ส่งไปที่ใด
   const locate = () => {
