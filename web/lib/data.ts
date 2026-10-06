@@ -71,7 +71,7 @@ async function fromFile(): Promise<Snapshot> {
     generatedAt: s.generated_at,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     stations: s.stations.filter((x: any) => !x.missing).map((x: any) =>
-      toStation({ code: x.code, name: x.name, seg: x.seg, is_key: !!x.key, lat: x.lat, lon: x.lon, source: x.source, time: x.time, wl: x.wl_msl, diff_bank: x.diff_bank, q: x.q, capacity: x.capacity, trend: x.trend }, now),
+      toStation({ code: x.code, name: x.name, seg: x.seg, is_key: !!x.key, lat: x.lat, lon: x.lon, source: x.source, time: x.time, wl: x.wl_msl, diff_bank: x.diff_bank, q: x.q, capacity: x.capacity, trend: x.trend, sign: x.ddpm_sign }, now),
     ),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     dams: s.dams.filter((d: any) => !d.missing).map((d: any) =>

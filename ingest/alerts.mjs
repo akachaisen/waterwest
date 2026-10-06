@@ -7,6 +7,32 @@ export const CLEAR_AFTER_MIN = 25; // ไม่พบซ้ำ 2 รอบ (15 �
 const BANK_CLEAR_M = -0.15; // สถานีที่ล้นตลิ่งอยู่แล้ว ต้องลดต่ำกว่าตลิ่ง 15 ซม. จึงเลิกเตือน (กันการแกว่ง)
 const fmt = (n, d = 0) => Number(n).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
 
+// น้ำขึ้นเร็ว: ระดับขึ้นเกิน RISE_M ใน 6 ชม. — เฉพาะลำน้ำสาขาและแม่กลองท้ายเขื่อนแม่กลอง
+// (ไม่รวมสถานีใต้เขื่อนที่ขึ้นลงตามการปล่อยน้ำทุกวัน และสถานีปากแม่น้ำที่ขึ้นลงตามน้ำทะเล — ปรับจากข้อมูล ก.ย.–ต.ค. 2569)
+export const RISE_M = 0.8;
+const RISE_CLEAR_M = 0.5;
+export const RISE_STATIONS = ['K.25A', 'K.64', 'K.61', 'K.62', 'KRI04', 'K.49', 'KRI09', 'K.12', 'K.31', 'K.11A', 'K.63', 'K.55A', 'K.56A'];
+
+// ใส่ rise_6h (ม.) ให้สถานีใน RISE_STATIONS — เทียบกับค่าแหล่งเดียวกันที่ใกล้ "6 ชม.ก่อนเวลาวัดล่าสุด" (ยอมคลาด ±45 นาที)
+export async function attachRise(db, snapshot) {
+  const since = new Date(new Date(snapshot.generated_at).getTime() - 8 * 36e5).toISOString();
+  const codes = RISE_STATIONS.map((c) => `"${c}"`).join(',');
+  const res = await fetch(`${db.url}/rest/v1/readings?select=station_code,source,measured_at,wl&station_code=in.(${encodeURIComponent(codes)})&measured_at=gte.${since}&wl=not.is.null&limit=5000`, { headers: db.headers });
+  if (!res.ok) throw new Error(`อ่าน readings ไม่สำเร็จ: HTTP ${res.status}`);
+  const rows = await res.json();
+  for (const s of snapshot.stations) {
+    if (!RISE_STATIONS.includes(s.code) || s.missing || s.stale || s.wl_msl == null || !s.time) continue;
+    const target = new Date(s.time).getTime() - 6 * 36e5;
+    let best = null;
+    for (const r of rows) {
+      if (r.station_code !== s.code || r.source !== s.source) continue;
+      const dt = Math.abs(new Date(r.measured_at).getTime() - target);
+      if (dt <= 45 * 60e3 && (!best || dt < best.dt)) best = { dt, wl: Number(r.wl) };
+    }
+    if (best) s.rise_6h = +(s.wl_msl - best.wl).toFixed(2);
+  }
+}
+
 // กฎเตือนภัย → [{ key, level, text }]  (activeKeys = เหตุที่ยังเปิดอยู่จากรอบก่อน ใช้ทำ hysteresis)
 export function evaluate(snapshot, activeKeys = new Set()) {
   const out = [];
@@ -21,6 +47,16 @@ export function evaluate(snapshot, activeKeys = new Set()) {
     const level = s.key ? (rising ? 'red' : 'orange') : 'yellow';
     const where = s.diff_bank > 0 ? `สูงกว่าตลิ่ง ${fmt(s.diff_bank, 2)} ม.` : `เพิ่งลดลงต่ำกว่าตลิ่ง (${fmt(s.diff_bank, 2)} ม.)`;
     out.push({ key, level, text: `${s.name} (${s.code}) ${where}${rising ? ' และยังเพิ่มขึ้น' : ''}` });
+  }
+
+  // น้ำขึ้นเร็ว (ยังไม่ล้นตลิ่ง — ถ้าล้นแล้วมีเตือนล้นตลิ่งอยู่แล้ว)
+  for (const s of snapshot.stations) {
+    if (s.rise_6h == null || s.stale) continue;
+    const key = `rise:${s.code}`;
+    if (out.some((o) => o.key === `bank:${s.code}`)) continue;
+    if (s.rise_6h < RISE_M && !(activeKeys.has(key) && s.rise_6h >= RISE_CLEAR_M)) continue;
+    const bank = s.diff_bank == null ? '' : s.diff_bank > 0 ? ` · สูงกว่าตลิ่ง ${fmt(s.diff_bank, 2)} ม.` : ` · ยังต่ำกว่าตลิ่ง ${fmt(-s.diff_bank, 2)} ม.`;
+    out.push({ key, level: 'yellow', text: `น้ำขึ้นเร็ว ${s.name} (${s.code}) ขึ้น ${fmt(s.rise_6h, 2)} ม. ใน 6 ชม.${bank}` });
   }
 
   const k37 = by['K.37'];
@@ -70,6 +106,11 @@ export async function syncAlerts(db, snapshot, { lineReady }) {
   });
   const prevBy = new Map(prev.map((a) => [a.key, a]));
   const activeKeys = new Set(prev.filter((a) => a.active).map((a) => a.key));
+  try {
+    await attachRise(db, snapshot);
+  } catch {
+    // อ่านค่าย้อนหลังไม่ได้ — ข้ามกฎน้ำขึ้นเร็วรอบนี้
+  }
   const current = evaluate(snapshot, activeKeys);
   const curKeys = new Set(current.map((c) => c.key));
 

@@ -587,6 +587,27 @@ var LABEL = { red: "\u{1F534} \u0E27\u0E34\u0E01\u0E24\u0E15", orange: "\u{1F7E0
 var CLEAR_AFTER_MIN = 25;
 var BANK_CLEAR_M = -0.15;
 var fmt2 = (n, d = 0) => Number(n).toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
+var RISE_M = 0.8;
+var RISE_CLEAR_M = 0.5;
+var RISE_STATIONS = ["K.25A", "K.64", "K.61", "K.62", "KRI04", "K.49", "KRI09", "K.12", "K.31", "K.11A", "K.63", "K.55A", "K.56A"];
+async function attachRise(db, snapshot) {
+  const since = new Date(new Date(snapshot.generated_at).getTime() - 8 * 36e5).toISOString();
+  const codes = RISE_STATIONS.map((c) => `"${c}"`).join(",");
+  const res = await fetch(`${db.url}/rest/v1/readings?select=station_code,source,measured_at,wl&station_code=in.(${encodeURIComponent(codes)})&measured_at=gte.${since}&wl=not.is.null&limit=5000`, { headers: db.headers });
+  if (!res.ok) throw new Error(`\u0E2D\u0E48\u0E32\u0E19 readings \u0E44\u0E21\u0E48\u0E2A\u0E33\u0E40\u0E23\u0E47\u0E08: HTTP ${res.status}`);
+  const rows = await res.json();
+  for (const s of snapshot.stations) {
+    if (!RISE_STATIONS.includes(s.code) || s.missing || s.stale || s.wl_msl == null || !s.time) continue;
+    const target = new Date(s.time).getTime() - 6 * 36e5;
+    let best = null;
+    for (const r of rows) {
+      if (r.station_code !== s.code || r.source !== s.source) continue;
+      const dt = Math.abs(new Date(r.measured_at).getTime() - target);
+      if (dt <= 45 * 6e4 && (!best || dt < best.dt)) best = { dt, wl: Number(r.wl) };
+    }
+    if (best) s.rise_6h = +(s.wl_msl - best.wl).toFixed(2);
+  }
+}
 function evaluate(snapshot, activeKeys = /* @__PURE__ */ new Set()) {
   const out = [];
   const by = Object.fromEntries(snapshot.stations.map((s) => [s.code, s]));
@@ -599,6 +620,14 @@ function evaluate(snapshot, activeKeys = /* @__PURE__ */ new Set()) {
     const level = s.key ? rising ? "red" : "orange" : "yellow";
     const where = s.diff_bank > 0 ? `\u0E2A\u0E39\u0E07\u0E01\u0E27\u0E48\u0E32\u0E15\u0E25\u0E34\u0E48\u0E07 ${fmt2(s.diff_bank, 2)} \u0E21.` : `\u0E40\u0E1E\u0E34\u0E48\u0E07\u0E25\u0E14\u0E25\u0E07\u0E15\u0E48\u0E33\u0E01\u0E27\u0E48\u0E32\u0E15\u0E25\u0E34\u0E48\u0E07 (${fmt2(s.diff_bank, 2)} \u0E21.)`;
     out.push({ key, level, text: `${s.name} (${s.code}) ${where}${rising ? " \u0E41\u0E25\u0E30\u0E22\u0E31\u0E07\u0E40\u0E1E\u0E34\u0E48\u0E21\u0E02\u0E36\u0E49\u0E19" : ""}` });
+  }
+  for (const s of snapshot.stations) {
+    if (s.rise_6h == null || s.stale) continue;
+    const key = `rise:${s.code}`;
+    if (out.some((o) => o.key === `bank:${s.code}`)) continue;
+    if (s.rise_6h < RISE_M && !(activeKeys.has(key) && s.rise_6h >= RISE_CLEAR_M)) continue;
+    const bank = s.diff_bank == null ? "" : s.diff_bank > 0 ? ` \xB7 \u0E2A\u0E39\u0E07\u0E01\u0E27\u0E48\u0E32\u0E15\u0E25\u0E34\u0E48\u0E07 ${fmt2(s.diff_bank, 2)} \u0E21.` : ` \xB7 \u0E22\u0E31\u0E07\u0E15\u0E48\u0E33\u0E01\u0E27\u0E48\u0E32\u0E15\u0E25\u0E34\u0E48\u0E07 ${fmt2(-s.diff_bank, 2)} \u0E21.`;
+    out.push({ key, level: "yellow", text: `\u0E19\u0E49\u0E33\u0E02\u0E36\u0E49\u0E19\u0E40\u0E23\u0E47\u0E27 ${s.name} (${s.code}) \u0E02\u0E36\u0E49\u0E19 ${fmt2(s.rise_6h, 2)} \u0E21. \u0E43\u0E19 6 \u0E0A\u0E21.${bank}` });
   }
   const k37 = by["K.37"];
   if (k37?.q && k37.capacity && k37.q > k37.capacity && !k37.stale)
@@ -638,6 +667,10 @@ async function syncAlerts(db, snapshot, { lineReady }) {
   });
   const prevBy = new Map(prev.map((a) => [a.key, a]));
   const activeKeys = new Set(prev.filter((a) => a.active).map((a) => a.key));
+  try {
+    await attachRise(db, snapshot);
+  } catch {
+  }
   const current = evaluate(snapshot, activeKeys);
   const curKeys = new Set(current.map((c) => c.key));
   const rows = [];

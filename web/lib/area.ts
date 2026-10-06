@@ -193,6 +193,21 @@ export function analyze(place: Place, s: Snapshot): AreaReport {
     ref = local?.station ?? nearest.find((n) => !n.canal && !n.station.stale && n.station.diffBank !== null)?.station ?? null;
   }
 
+  // สถานีอีกหน่วยงานที่จุดเดียวกัน (ห่าง ≤ 1 กม. เช่น K.62 กรมชลฯ กับ KRI04 ปภ.) อาจใช้ "ตลิ่ง" คนละระดับ
+  // → ประเมินด้วยสถานีที่เตือนแรงกว่า และบอกค่าของอีกสถานีไว้ด้วย
+  let twin: Station | null = null;
+  if (ref && ref.lat !== null && ref.lon !== null) {
+    const r0 = ref;
+    const near = s.stations.filter(
+      (x) => x.code !== r0.code && !CANAL_STATIONS.has(x.code) && !x.stale && x.diffBank !== null && x.lat !== null && x.lon !== null && distKm([r0.lat!, r0.lon!], [x.lat, x.lon]) <= 1,
+    );
+    const worse = near.sort((a, b) => RANK[b.level] - RANK[a.level])[0];
+    if (worse && RANK[worse.level] > RANK[r0.level]) {
+      twin = r0;
+      ref = worse;
+    } else twin = near[0] ?? null;
+  }
+
   // เวลามวลน้ำ: ใช้บ้านโป่ง (K.55A) เป็นต้นทาง ถ้าพื้นที่อยู่ท้ายบ้านโป่ง · ถ้าอยู่ระหว่างเขื่อน–บ้านโป่ง ใช้ K.11A
   let eta: AreaReport["eta"] = null;
   if (onLower && mk.dist <= 25) {
@@ -222,6 +237,10 @@ export function analyze(place: Place, s: Snapshot): AreaReport {
       reasons.push(`${ref.name} (${ref.code}) ระดับน้ำปกติ`);
     }
     if (ref.trend === "เพิ่มขึ้น" && RANK[level] >= RANK.yellow) reasons.push("ระดับน้ำที่สถานีอ้างอิงยังเพิ่มขึ้น");
+    if (twin && twin.diffBank !== null && twin.level !== ref.level)
+      reasons.push(
+        `สถานี ${twin.name} (${twin.code}) จุดเดียวกัน วัดได้${twin.diffBank > 0 ? `สูงกว่าตลิ่ง ${twin.diffBank.toFixed(2)}` : `ต่ำกว่าตลิ่ง ${(-twin.diffBank).toFixed(2)}`} ม. (แต่ละหน่วยงานกำหนดระดับตลิ่งต่างกัน)`,
+      );
   } else reasons.push("ไม่มีสถานีวัดน้ำที่ใช้ประเมินได้");
   if (tide) reasons.push("พื้นที่ได้รับผลน้ำทะเลหนุน — ระดับน้ำขึ้นลงตามเวลาน้ำขึ้นสูง");
 
