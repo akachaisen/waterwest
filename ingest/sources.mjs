@@ -181,6 +181,21 @@ export function ridPoint(st, p) {
   };
 }
 
+// แถว readings ย้อนหลังของวันหนึ่ง (ใช้เติมข้อมูลย้อนหลัง) · ข้ามค่าล่าสุด 3 ชม. ให้การดึงปกติเขียน (มีแนวโน้ม)
+export async function ridHistoryRows(d, codes) {
+  const cutoff = Date.now() - 3 * 36e5;
+  const rows = [];
+  for (const [code, st] of await ridHourlyDay(d)) {
+    if (!codes.has(code)) continue;
+    for (const p of st.points) {
+      if (Date.parse(p.time) > cutoff) continue;
+      const v = ridPoint(st, p);
+      rows.push({ station_code: code, source: 'RID-HYD', measured_at: p.time, wl: v.wl_msl, bank: v.bank_msl, diff_bank: v.diff_bank, pct_bank: null, q: p.q, trend: null, qc: 'backfill' });
+    }
+  }
+  return rows;
+}
+
 export async function fetchRidHourly(now = new Date()) {
   const latest = (day) => {
     const out = new Map();

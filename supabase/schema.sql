@@ -191,3 +191,31 @@ begin
     end if;
   end loop;
 end $$;
+
+-- เก็บข้อมูลไม่ให้ฐานข้อมูลโตเกินแผนฟรี (500 MB) — รันทุกคืน 03:30 น. (pg_cron)
+--  readings เก่ากว่า 90 วัน: เหลือค่าแรกของแต่ละชั่วโมง (กราฟย้อนหลังยังใช้ได้ แต่ละเอียดรายชั่วโมง)
+--  ingest_runs เก่ากว่า 180 วัน, sea_level / rain_forecast เก่ากว่า 90 วัน: ลบ
+create or replace function waterwest_prune() returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare a int; b int; c int; d int;
+begin
+  delete from readings r
+  using (
+    select id, row_number() over (partition by station_code, source, date_trunc('hour', measured_at) order by measured_at) as k
+    from readings
+    where measured_at < now() - interval '90 days'
+  ) x
+  where r.id = x.id and x.k > 1;
+  get diagnostics a = row_count;
+  delete from ingest_runs where started_at < now() - interval '180 days';
+  get diagnostics b = row_count;
+  delete from sea_level where at < now() - interval '90 days';
+  get diagnostics c = row_count;
+  delete from rain_forecast where forecast_date < current_date - 90;
+  get diagnostics d = row_count;
+  return jsonb_build_object('readings', a, 'ingest_runs', b, 'sea_level', c, 'rain_forecast', d);
+end $$;
+revoke all on function waterwest_prune() from public, anon, authenticated;
+
+-- 20:30 UTC = 03:30 น. เวลาไทย
+select cron.schedule('waterwest-prune', '30 20 * * *', 'select waterwest_prune()');

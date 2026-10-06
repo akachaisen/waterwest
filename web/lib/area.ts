@@ -82,7 +82,14 @@ function segment(p: [number, number], a: number[], b: number[]): [number, number
   return [Math.hypot(ax + t * dx, ay + t * dy), t];
 }
 
-type Rivers = { maeklong: { points: number[][]; km: number[] }; khwaenoi: number[][][]; khwaeyai: number[][][]; maeklong_up: number[][][] };
+type Rivers = {
+  maeklong: { points: number[][]; km: number[] };
+  khwaenoi: number[][][];
+  khwaeyai: number[][][];
+  maeklong_up: number[][][];
+  phachi: number[][][]; // ลำน้ำสาขา (OSM)
+  taphoen: number[][][];
+};
 const RIVERS = riversData as Rivers;
 
 // ตำแหน่งบนแม่น้ำแม่กลอง (ท้ายเขื่อน): ระยะห่าง + กม. ตามลำน้ำจากเขื่อนแม่กลอง
@@ -147,6 +154,11 @@ export function analyze(place: Place, s: Snapshot): AreaReport {
     { name: "แม่น้ำแม่กลอง (เหนือเขื่อนแม่กลอง)", d: nearLines(p, RIVERS.maeklong_up) },
   ];
   const up = others.reduce((a, b) => (b.d < a.d ? b : a));
+  const tribs = [
+    { name: "ลำภาชี", d: nearLines(p, RIVERS.phachi) },
+    { name: "ลำตะเพิน", d: nearLines(p, RIVERS.taphoen) },
+  ];
+  const trib = tribs.reduce((a, b) => (b.d < a.d ? b : a));
 
   const withCoords = s.stations.filter((x) => x.lat !== null && x.lon !== null);
   const nearest = withCoords
@@ -154,12 +166,22 @@ export function analyze(place: Place, s: Snapshot): AreaReport {
     .sort((a, b) => a.distKm - b.distKm)
     .slice(0, 3);
 
-  // พื้นที่ห่างแม่น้ำสายหลักเกิน 15 กม. แต่มีสถานีบนลำน้ำสาขาใกล้ ๆ (เช่น ลำภาชี สวนผึ้ง–จอมบึง) → ใช้ลำน้ำนั้นประเมิน
+  // ใกล้ลำน้ำสาขา (ลำภาชี / ลำตะเพิน) มากกว่าแม่น้ำสายหลัก → ใช้สถานีบนลำน้ำนั้นที่ใกล้สุด
+  // หรือห่างแม่น้ำสายหลักเกิน 15 กม. แต่มีสถานีใกล้ ๆ → ใช้สถานีนั้นประเมิน
   const mainDist = Math.min(mk.dist, up.d);
-  const local = mainDist > 15 ? nearest.find((n) => !n.canal && !n.station.stale && n.station.diffBank !== null && n.distKm <= 15) : undefined;
+  const usable = (x: Station) => !x.stale && x.diffBank !== null;
+  const onTrib = trib.d < mainDist && trib.d <= 15;
+  const tribStation = onTrib
+    ? withCoords
+        .filter((x) => TRIBUTARY.get(x.code) === trib.name && usable(x))
+        .map((x) => ({ station: x, distKm: distKm(p, [x.lat!, x.lon!]), canal: false }))
+        .sort((a, b) => a.distKm - b.distKm)
+        .find((n) => n.distKm <= 30)
+    : undefined;
+  const local = tribStation ?? (mainDist > 15 ? nearest.find((n) => !n.canal && usable(n.station) && n.distKm <= 15) : undefined);
   const onLower = !local && mk.dist <= up.d;
-  const riverName = local ? (TRIBUTARY.get(local.station.code) ?? "ลำน้ำใกล้พื้นที่") : onLower ? "แม่น้ำแม่กลอง" : up.name;
-  const riverDist = local ? local.distKm : onLower ? mk.dist : up.d;
+  const riverName = tribStation ? trib.name : local ? (TRIBUTARY.get(local.station.code) ?? "ลำน้ำใกล้พื้นที่") : onLower ? "แม่น้ำแม่กลอง" : up.name;
+  const riverDist = tribStation ? trib.d : local ? local.distKm : onLower ? mk.dist : up.d;
   const type: RiskType = riverDist <= 1 ? "riverside" : riverDist <= 5 ? "near" : "far";
 
   // สถานีอ้างอิง: บนแม่น้ำแม่กลองสายหลัก ใกล้ตำแหน่งตามลำน้ำที่สุด (ถ้าพื้นที่อยู่ช่วงล่าง) ไม่งั้นใช้สถานีใกล้สุดที่ไม่ใช่คลอง

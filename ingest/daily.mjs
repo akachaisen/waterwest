@@ -21,6 +21,12 @@ const KEY_STATIONS = [
   ['K.57', 'บางคนที'],
 ];
 
+// ลำน้ำสาขา: แสดงจุดที่น้ำสูงสุดเทียบตลิ่งของแต่ละสาย (บรรทัดเดียว)
+const TRIBUTARIES = [
+  ['ลำภาชี', ['K.25A', 'K.64', 'K.61', 'K.62', 'KRI04']],
+  ['ลำตะเพิน', ['K.49', 'KRI09', 'K.12']],
+];
+
 const fmt = (n, d = 0) => Number(n).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
 const thai = (d) => new Date(d.getTime() + 7 * 3600e3); // ใช้ getUTC* อ่านเป็นเวลาไทย
 export const thaiDate = (d) => thai(d).toISOString().slice(0, 10);
@@ -30,7 +36,8 @@ const hm = (iso, now) => {
   const t = d.toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok', hour: '2-digit', minute: '2-digit' });
   return thaiDate(d) === thaiDate(now) ? `${t} น.` : `${d.toLocaleDateString('th-TH', { timeZone: 'Asia/Bangkok', day: 'numeric', month: 'short' })} ${t} น.`;
 };
-const arrow = (trend) => (trend === 'เพิ่มขึ้น' ? ' ↑' : trend === 'ลดลง' ? ' ↓' : trend === 'ทรงตัว' ? ' →' : '');
+const bankText = (d) => (d > 0 ? `สูงกว่าตลิ่ง ${fmt(d, 2)} ม.` : `ต่ำกว่าตลิ่ง ${fmt(-d, 2)} ม.`);
+const arrow = (trend) => (trend === 'เพิ่มขึ้น' ? ' ↑' : trend === 'ลดลง' ? ' ↓' : trend === 'ทรงตัว' || trend === 'คงที่' ? ' →' : '');
 
 // ข้อความสรุป — ทุกหัวข้อระบุเวลาของข้อมูล
 export function formatDaily(snapshot, active, webUrl, now = new Date(snapshot.generated_at)) {
@@ -44,9 +51,22 @@ export function formatDaily(snapshot, active, webUrl, now = new Date(snapshot.ge
   for (const [code, name] of KEY_STATIONS) {
     const s = by[code];
     if (!s || s.missing) { L.push(`• ${name}: ไม่มีข้อมูล`); continue; }
-    const bank = s.diff_bank == null ? '' : s.diff_bank > 0 ? `สูงกว่าตลิ่ง ${fmt(s.diff_bank, 2)} ม.` : `ต่ำกว่าตลิ่ง ${fmt(-s.diff_bank, 2)} ม.`;
+    const bank = s.diff_bank == null ? '' : bankText(s.diff_bank);
     const q = s.q ? ` · ${fmt(s.q)} ลบ.ม./วิ` : '';
     L.push(`• ${name}: ${bank || 'ไม่มีค่าเทียบตลิ่ง'}${q}${arrow(s.trend)} (${hm(s.time, now)}${s.stale ? ' ⚠️ข้อมูลเก่า' : ''})`);
+  }
+
+  const tribs = TRIBUTARIES.map(([river, codes]) => {
+    const live = codes.map((c) => by[c]).filter((s) => s && !s.missing && !s.stale && s.diff_bank != null);
+    return [river, live.reduce((w, s) => (!w || s.diff_bank > w.diff_bank ? s : w), null), live.length];
+  });
+  if (tribs.some(([, s]) => s)) {
+    L.push('', '〰️ ลำน้ำสาขา (จุดน้ำสูงสุดเทียบตลิ่ง)');
+    for (const [river, s, n] of tribs) {
+      if (!s) { L.push(`• ${river}: ไม่มีข้อมูล`); continue; }
+      const place = s.name.replace(/\s*\((ต้น)?(ลำภาชี|ลำตะเพิน)\)|\s*(ลำภาชี|ลำตะเพิน)\s*/g, ' ').trim();
+      L.push(`• ${river}: ${bankText(s.diff_bank)}${arrow(s.trend)} ที่${place} (${hm(s.time, now)} · ${n} สถานี)`);
+    }
   }
 
   const dams = (snapshot.dams ?? []).filter((d) => !d.missing);

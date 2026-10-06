@@ -10,6 +10,8 @@ import { syncQuota } from "../../../ingest/quota.mjs";
 import { maybeSendDaily } from "../../../ingest/daily.mjs";
 import { syncRainObs } from "../../../ingest/rainobs.mjs";
 import { tideFromStation } from "../../../ingest/tide.mjs";
+import { ridHistoryRows } from "../../../ingest/sources.mjs";
+import { STATIONS } from "../../../ingest/stations.mjs";
 
 const MIN_GAP_MIN = 8;
 
@@ -36,10 +38,19 @@ function secretKey(): string | undefined {
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
 
-Deno.serve(async () => {
+Deno.serve(async (req) => {
   const env = { SUPABASE_URL: Deno.env.get("SUPABASE_URL"), SUPABASE_SECRET_KEY: secretKey() };
   const db = dbConfig(env);
   if (!db) return json({ error: "ไม่มีค่า SUPABASE_URL / คีย์" }, 500);
+
+  // ?rid_day=N: เติมค่ารายชั่วโมงกรมชลฯ ย้อนหลังของวันที่ N วันก่อน (0–60, 0 = วันนี้) — เครื่อง GitHub เข้า hyd-app ไม่ได้
+  const ridParam = new URL(req.url).searchParams.get("rid_day");
+  const ridDay = ridParam === null ? NaN : Number(ridParam);
+  if (Number.isInteger(ridDay) && ridDay >= 0 && ridDay <= 60) {
+    const codes = new Set(STATIONS.filter((s) => s.src === "swoc").map((s) => s.code));
+    const rows = await ridHistoryRows(new Date(Date.now() - ridDay * 86400e3), codes);
+    return json({ rid_day: ridDay, saved: await upsert(db, "readings", rows) });
+  }
 
   // กันการเรียกถี่เกินไป (ทั้งจากคนภายนอกและเมื่อ GitHub รันใกล้เวลากัน)
   const last = await fetch(`${db.url}/rest/v1/ingest_runs?select=started_at&order=started_at.desc&limit=1`, { headers: db.headers })

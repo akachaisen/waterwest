@@ -190,54 +190,80 @@ async function hydPost(path, body, form = false) {
   if (!res.ok) throw new Error(`HTTP ${res.status} ${path}`);
   return res.json();
 }
-async function fetchRidHourly(now = /* @__PURE__ */ new Date()) {
-  const day = async (d) => {
-    const tc = thaiDateBE(d);
-    const dw = { UtokID: "7", BasinID: "14", TimeCurrent: tc };
-    const model = await hydPost("HDService.svc/GetColModelAllHL", JSON.stringify({ hydro: dw }));
-    const form = new URLSearchParams({ "DW[UtokID]": "7", "DW[BasinID]": "14", "DW[TimeCurrent]": tc, _search: "false", rows: "100", page: "1", sidx: "indexhourly", sord: "asc" });
-    const data = await hydPost("getGroupHourlyWaterLevelReportAllHL.ashx", form.toString(), true);
-    return { model, rows: data.rows ?? [], date: new Date(now.getTime() + 7 * 36e5 - (now - d)) };
+async function ridHourlyDay(d) {
+  const tc = thaiDateBE(d);
+  const model = await hydPost("HDService.svc/GetColModelAllHL", JSON.stringify({ hydro: { UtokID: "7", BasinID: "14", TimeCurrent: tc } }));
+  const form = new URLSearchParams({ "DW[UtokID]": "7", "DW[BasinID]": "14", "DW[TimeCurrent]": tc, _search: "false", rows: "100", page: "1", sidx: "indexhourly", sord: "asc" });
+  const data = await hydPost("getGroupHourlyWaterLevelReportAllHL.ashx", form.toString(), true);
+  const t = new Date(d.getTime() + 7 * 36e5);
+  const codes = model.groupHeadersStationCode.map((x) => x.titleText.trim());
+  const prov = (model.groupHeadersStationProvince ?? []).map((x) => x.titleText);
+  const out = /* @__PURE__ */ new Map();
+  codes.forEach((code, i) => {
+    const n = i + 1;
+    const wlLabel = model.colModel.find((c) => c.name === `wlvalues${n}`)?.label ?? "";
+    const qLabel = model.colModel.find((c) => c.name === `qvalues${n}`)?.label ?? "";
+    const points = (data.rows ?? []).filter((r) => r[`wlvalues${n}`] !== null && r[`wlvalues${n}`] !== void 0).map((r) => ({
+      // ชั่วโมงในตาราง (เวลาไทย) · 24.00 = เที่ยงคืนวันถัดไป
+      time: new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), t.getUTCDate(), Number(r.hourlytime) - 7)).toISOString(),
+      wl: +Number(r[`wlvalues${n}`]).toFixed(2),
+      q: num(r[`qvalues${n}`])
+    }));
+    out.set(code, {
+      bank: num(wlLabel.match(/ระดับตลิ่ง\s*(-?[\d.]+)/)?.[1]),
+      zg: num(wlLabel.match(/ZG\s*([+-]?[\d.]+)/)?.[1]),
+      qMax: num(qLabel.match(/ปริมาณ\s*([\d.]+)/)?.[1]),
+      province: prov[i] ?? null,
+      points
+    });
+  });
+  return out;
+}
+function ridPoint(st, p) {
+  return {
+    wl_msl: st.zg !== null ? +(st.zg + p.wl).toFixed(3) : null,
+    bank_msl: st.zg !== null && st.bank !== null ? +(st.zg + st.bank).toFixed(3) : null,
+    diff_bank: st.bank !== null ? +(p.wl - st.bank).toFixed(3) : null
   };
-  const parse = ({ model, rows }, d) => {
-    const codes = model.groupHeadersStationCode.map((x) => x.titleText.trim());
-    const prov = (model.groupHeadersStationProvince ?? []).map((x) => x.titleText);
+}
+async function ridHistoryRows(d, codes) {
+  const cutoff = Date.now() - 3 * 36e5;
+  const rows = [];
+  for (const [code, st] of await ridHourlyDay(d)) {
+    if (!codes.has(code)) continue;
+    for (const p of st.points) {
+      if (Date.parse(p.time) > cutoff) continue;
+      const v = ridPoint(st, p);
+      rows.push({ station_code: code, source: "RID-HYD", measured_at: p.time, wl: v.wl_msl, bank: v.bank_msl, diff_bank: v.diff_bank, pct_bank: null, q: p.q, trend: null, qc: "backfill" });
+    }
+  }
+  return rows;
+}
+async function fetchRidHourly(now = /* @__PURE__ */ new Date()) {
+  const latest = (day) => {
     const out = /* @__PURE__ */ new Map();
-    codes.forEach((code, i) => {
-      const n = i + 1;
-      const wlLabel = model.colModel.find((c) => c.name === `wlvalues${n}`)?.label ?? "";
-      const qLabel = model.colModel.find((c) => c.name === `qvalues${n}`)?.label ?? "";
-      const bank = num(wlLabel.match(/ระดับตลิ่ง\s*(-?[\d.]+)/)?.[1]);
-      const zg = num(wlLabel.match(/ZG\s*([+-]?[\d.]+)/)?.[1]);
-      const qMax = num(qLabel.match(/ปริมาณ\s*([\d.]+)/)?.[1]);
-      const pts = rows.filter((r) => r[`wlvalues${n}`] !== null && r[`wlvalues${n}`] !== void 0);
-      if (!pts.length) return;
+    for (const [code, st] of day) {
+      const pts = st.points;
+      if (!pts.length) continue;
       const last = pts[pts.length - 1];
       const prev3 = pts.length > 3 ? pts[pts.length - 4] : pts[0];
-      const wl = +Number(last[`wlvalues${n}`]).toFixed(2);
-      const ch = wl - Number(prev3[`wlvalues${n}`]);
-      const hour = Number(last.hourlytime);
-      const t = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), hour - 7));
+      const ch = last.wl - prev3.wl;
       out.set(code, {
         source: "RID-HYD",
-        time: t.toISOString(),
-        wl_msl: zg !== null ? +(zg + wl).toFixed(3) : null,
-        bank_msl: zg !== null && bank !== null ? +(zg + bank).toFixed(3) : null,
-        diff_bank: bank !== null ? +(wl - bank).toFixed(3) : null,
+        time: last.time,
+        ...ridPoint(st, last),
         pct_bank: null,
         trend: pts.length < 2 ? null : ch > 0.02 ? "\u0E40\u0E1E\u0E34\u0E48\u0E21\u0E02\u0E36\u0E49\u0E19" : ch < -0.02 ? "\u0E25\u0E14\u0E25\u0E07" : "\u0E04\u0E07\u0E17\u0E35\u0E48",
-        q: num(last[`qvalues${n}`]),
-        q_max: qMax,
-        province: prov[i] ?? null
+        q: last.q,
+        q_max: st.qMax,
+        province: st.province
       });
-    });
+    }
     return out;
   };
-  const thaiToday = new Date(now.getTime() + 7 * 36e5);
-  const today = parse(await day(now), thaiToday);
+  const today = latest(await ridHourlyDay(now));
   if (today.size >= 5) return today;
-  const y = new Date(now.getTime() - 864e5);
-  return parse(await day(y), new Date(y.getTime() + 7 * 36e5));
+  return latest(await ridHourlyDay(new Date(now.getTime() - 864e5)));
 }
 var DDPM = "https://cctv.disaster.go.th/api/v1";
 async function fetchDdpm(codes, provinces = ["71", "70", "75", "74"]) {
@@ -855,6 +881,10 @@ var KEY_STATIONS = [
   ["K.2B", "\u0E15\u0E31\u0E27\u0E40\u0E21\u0E37\u0E2D\u0E07\u0E23\u0E32\u0E0A\u0E1A\u0E38\u0E23\u0E35"],
   ["K.57", "\u0E1A\u0E32\u0E07\u0E04\u0E19\u0E17\u0E35"]
 ];
+var TRIBUTARIES = [
+  ["\u0E25\u0E33\u0E20\u0E32\u0E0A\u0E35", ["K.25A", "K.64", "K.61", "K.62", "KRI04"]],
+  ["\u0E25\u0E33\u0E15\u0E30\u0E40\u0E1E\u0E34\u0E19", ["K.49", "KRI09", "K.12"]]
+];
 var fmt3 = (n, d = 0) => Number(n).toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
 var thai = (d) => new Date(d.getTime() + 7 * 36e5);
 var thaiDate = (d) => thai(d).toISOString().slice(0, 10);
@@ -864,7 +894,8 @@ var hm = (iso, now) => {
   const t = d.toLocaleTimeString("th-TH", { timeZone: "Asia/Bangkok", hour: "2-digit", minute: "2-digit" });
   return thaiDate(d) === thaiDate(now) ? `${t} \u0E19.` : `${d.toLocaleDateString("th-TH", { timeZone: "Asia/Bangkok", day: "numeric", month: "short" })} ${t} \u0E19.`;
 };
-var arrow = (trend) => trend === "\u0E40\u0E1E\u0E34\u0E48\u0E21\u0E02\u0E36\u0E49\u0E19" ? " \u2191" : trend === "\u0E25\u0E14\u0E25\u0E07" ? " \u2193" : trend === "\u0E17\u0E23\u0E07\u0E15\u0E31\u0E27" ? " \u2192" : "";
+var bankText = (d) => d > 0 ? `\u0E2A\u0E39\u0E07\u0E01\u0E27\u0E48\u0E32\u0E15\u0E25\u0E34\u0E48\u0E07 ${fmt3(d, 2)} \u0E21.` : `\u0E15\u0E48\u0E33\u0E01\u0E27\u0E48\u0E32\u0E15\u0E25\u0E34\u0E48\u0E07 ${fmt3(-d, 2)} \u0E21.`;
+var arrow = (trend) => trend === "\u0E40\u0E1E\u0E34\u0E48\u0E21\u0E02\u0E36\u0E49\u0E19" ? " \u2191" : trend === "\u0E25\u0E14\u0E25\u0E07" ? " \u2193" : trend === "\u0E17\u0E23\u0E07\u0E15\u0E31\u0E27" || trend === "\u0E04\u0E07\u0E17\u0E35\u0E48" ? " \u2192" : "";
 function formatDaily(snapshot, active, webUrl, now = new Date(snapshot.generated_at)) {
   const day = now.toLocaleDateString("th-TH", { timeZone: "Asia/Bangkok", weekday: "short", day: "numeric", month: "short", year: "numeric" });
   const worst = active.reduce((w, a) => RANK2[a.level] > (RANK2[w] ?? 0) ? a.level : w, null);
@@ -878,9 +909,24 @@ function formatDaily(snapshot, active, webUrl, now = new Date(snapshot.generated
       L.push(`\u2022 ${name}: \u0E44\u0E21\u0E48\u0E21\u0E35\u0E02\u0E49\u0E2D\u0E21\u0E39\u0E25`);
       continue;
     }
-    const bank2 = s.diff_bank == null ? "" : s.diff_bank > 0 ? `\u0E2A\u0E39\u0E07\u0E01\u0E27\u0E48\u0E32\u0E15\u0E25\u0E34\u0E48\u0E07 ${fmt3(s.diff_bank, 2)} \u0E21.` : `\u0E15\u0E48\u0E33\u0E01\u0E27\u0E48\u0E32\u0E15\u0E25\u0E34\u0E48\u0E07 ${fmt3(-s.diff_bank, 2)} \u0E21.`;
+    const bank2 = s.diff_bank == null ? "" : bankText(s.diff_bank);
     const q = s.q ? ` \xB7 ${fmt3(s.q)} \u0E25\u0E1A.\u0E21./\u0E27\u0E34` : "";
     L.push(`\u2022 ${name}: ${bank2 || "\u0E44\u0E21\u0E48\u0E21\u0E35\u0E04\u0E48\u0E32\u0E40\u0E17\u0E35\u0E22\u0E1A\u0E15\u0E25\u0E34\u0E48\u0E07"}${q}${arrow(s.trend)} (${hm(s.time, now)}${s.stale ? " \u26A0\uFE0F\u0E02\u0E49\u0E2D\u0E21\u0E39\u0E25\u0E40\u0E01\u0E48\u0E32" : ""})`);
+  }
+  const tribs = TRIBUTARIES.map(([river, codes]) => {
+    const live = codes.map((c) => by[c]).filter((s) => s && !s.missing && !s.stale && s.diff_bank != null);
+    return [river, live.reduce((w, s) => !w || s.diff_bank > w.diff_bank ? s : w, null), live.length];
+  });
+  if (tribs.some(([, s]) => s)) {
+    L.push("", "\u3030\uFE0F \u0E25\u0E33\u0E19\u0E49\u0E33\u0E2A\u0E32\u0E02\u0E32 (\u0E08\u0E38\u0E14\u0E19\u0E49\u0E33\u0E2A\u0E39\u0E07\u0E2A\u0E38\u0E14\u0E40\u0E17\u0E35\u0E22\u0E1A\u0E15\u0E25\u0E34\u0E48\u0E07)");
+    for (const [river, s, n] of tribs) {
+      if (!s) {
+        L.push(`\u2022 ${river}: \u0E44\u0E21\u0E48\u0E21\u0E35\u0E02\u0E49\u0E2D\u0E21\u0E39\u0E25`);
+        continue;
+      }
+      const place = s.name.replace(/\s*\((ต้น)?(ลำภาชี|ลำตะเพิน)\)|\s*(ลำภาชี|ลำตะเพิน)\s*/g, " ").trim();
+      L.push(`\u2022 ${river}: ${bankText(s.diff_bank)}${arrow(s.trend)} \u0E17\u0E35\u0E48${place} (${hm(s.time, now)} \xB7 ${n} \u0E2A\u0E16\u0E32\u0E19\u0E35)`);
+    }
   }
   const dams = (snapshot.dams ?? []).filter((d) => !d.missing);
   if (dams.length) {
@@ -1130,10 +1176,17 @@ function secretKey() {
   return Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 }
 var json = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
-Deno.serve(async () => {
+Deno.serve(async (req) => {
   const env = { SUPABASE_URL: Deno.env.get("SUPABASE_URL"), SUPABASE_SECRET_KEY: secretKey() };
   const db = dbConfig(env);
   if (!db) return json({ error: "\u0E44\u0E21\u0E48\u0E21\u0E35\u0E04\u0E48\u0E32 SUPABASE_URL / \u0E04\u0E35\u0E22\u0E4C" }, 500);
+  const ridParam = new URL(req.url).searchParams.get("rid_day");
+  const ridDay = ridParam === null ? NaN : Number(ridParam);
+  if (Number.isInteger(ridDay) && ridDay >= 0 && ridDay <= 60) {
+    const codes = new Set(STATIONS.filter((s) => s.src === "swoc").map((s) => s.code));
+    const rows = await ridHistoryRows(new Date(Date.now() - ridDay * 864e5), codes);
+    return json({ rid_day: ridDay, saved: await upsert(db, "readings", rows) });
+  }
   const last = await fetch(`${db.url}/rest/v1/ingest_runs?select=started_at&order=started_at.desc&limit=1`, { headers: db.headers }).then((r) => r.json()).catch(() => []);
   const lastAt = last?.[0]?.started_at ? new Date(last[0].started_at).getTime() : 0;
   const gapMin = (Date.now() - lastAt) / 6e4;

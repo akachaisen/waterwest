@@ -2,12 +2,13 @@
 //  - ระดับน้ำ/ปริมาณ ย้อนหลังจาก ThaiWater (เฉพาะสถานีที่ ThaiWater มี)
 //  - เขื่อนรายวัน ย้อนหลังจาก API อ่างเก็บน้ำ กรมชลฯ
 //  - ระดับน้ำรายชั่วโมงสถานีกรมชลฯ (hyd-app) — สถานีที่ ThaiWater ไม่มี เช่น K.63 K.64
+//    (เครื่อง GitHub ต่างประเทศเข้า hyd-app ไม่ได้ → ใช้ Edge Function ?rid_day=N แทน)
 // รัน: node ingest/backfill.mjs [จำนวนวันสถานี=7] [จำนวนวันเขื่อน=30] [จำนวนวันกรมชลฯ รายชั่วโมง=0]   (ต้องตั้ง SUPABASE_URL / SUPABASE_SECRET_KEY)
 //      เพิ่ม --dry-run เพื่อดึงข้อมูลโดยไม่บันทึก
 
 import { STATIONS, DAMS } from './stations.mjs';
 import { dbConfig, upsert } from './store.mjs';
-import { ridHourlyDay, ridPoint } from './sources.mjs';
+import { ridHistoryRows } from './sources.mjs';
 
 const UA = 'WaterWest/0.1 (non-commercial Mae Klong flood monitoring)';
 const args = process.argv.slice(2).filter((a) => !a.startsWith('--'));
@@ -73,19 +74,10 @@ async function stationHistory() {
 async function ridHistory() {
   const want = new Set(STATIONS.filter((s) => s.src === 'swoc').map((s) => s.code));
   const rows = [];
-  const cutoff = Date.now() - 3 * 36e5;
   for (let i = 0; i < RID_DAYS; i++) {
     const d = new Date(Date.now() - i * 86400e3);
     try {
-      const day = await ridHourlyDay(d);
-      for (const [code, st] of day) {
-        if (!want.has(code)) continue;
-        for (const p of st.points) {
-          if (Date.parse(p.time) > cutoff) continue; // ค่าล่าสุดให้การดึงปกติเขียน (มีแนวโน้ม)
-          const v = ridPoint(st, p);
-          rows.push({ station_code: code, source: 'RID-HYD', measured_at: p.time, wl: v.wl_msl, bank: v.bank_msl, diff_bank: v.diff_bank, pct_bank: null, q: p.q, trend: null, qc: 'backfill' });
-        }
-      }
+      rows.push(...(await ridHistoryRows(d, want)));
     } catch (e) {
       console.log(`  กรมชลฯ รายชั่วโมง ${ymd(d)}: ${e.message}`);
     }
