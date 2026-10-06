@@ -121,6 +121,76 @@ export async function fetchRidDams(dams = []) {
   }
 }
 
+// กรมชลประทาน — ข้อมูลอุทกวิทยารายชั่วโมง (hyd-app.rid.go.th) ศูนย์อุทกวิทยาภาคตะวันตก (Utok 7) ลุ่มน้ำแม่กลอง (Basin 14)
+// สาธารณะ ไม่ต้องเข้าระบบ · ค่าใหม่กว่า SWOC ราว 1–2 ชม. · 20 สถานี มีระดับน้ำ ตลิ่ง (จากหัวคอลัมน์) และปริมาณน้ำ
+// หัวคอลัมน์ระดับ: "ระดับตลิ่ง 8.00 ม. ZG+60.600 ม.(รสม.)" → ตลิ่ง (ไม้วัด) และศูนย์เสาระดับ ZG (ม.รทก.)
+const HYD = 'https://hyd-app.rid.go.th/webservice';
+const thaiDateBE = (d) => {
+  const t = new Date(d.getTime() + 7 * 36e5);
+  return `${String(t.getUTCDate()).padStart(2, '0')}/${String(t.getUTCMonth() + 1).padStart(2, '0')}/${t.getUTCFullYear() + 543}`;
+};
+async function hydPost(path, body, form = false) {
+  const res = await fetch(`${HYD}/${path}`, {
+    method: 'POST',
+    headers: { 'User-Agent': UA, 'Content-Type': form ? 'application/x-www-form-urlencoded' : 'application/json; charset=utf-8' },
+    body,
+    signal: AbortSignal.timeout(45000),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status} ${path}`);
+  return res.json();
+}
+export async function fetchRidHourly(now = new Date()) {
+  const day = async (d) => {
+    const tc = thaiDateBE(d);
+    const dw = { UtokID: '7', BasinID: '14', TimeCurrent: tc };
+    const model = await hydPost('HDService.svc/GetColModelAllHL', JSON.stringify({ hydro: dw }));
+    const form = new URLSearchParams({ 'DW[UtokID]': '7', 'DW[BasinID]': '14', 'DW[TimeCurrent]': tc, _search: 'false', rows: '100', page: '1', sidx: 'indexhourly', sord: 'asc' });
+    const data = await hydPost('getGroupHourlyWaterLevelReportAllHL.ashx', form.toString(), true);
+    return { model, rows: data.rows ?? [], date: new Date(now.getTime() + 7 * 36e5 - (now - d)) };
+  };
+  const parse = ({ model, rows }, d) => {
+    const codes = model.groupHeadersStationCode.map((x) => x.titleText.trim());
+    const prov = (model.groupHeadersStationProvince ?? []).map((x) => x.titleText);
+    const out = new Map();
+    codes.forEach((code, i) => {
+      const n = i + 1;
+      const wlLabel = model.colModel.find((c) => c.name === `wlvalues${n}`)?.label ?? '';
+      const qLabel = model.colModel.find((c) => c.name === `qvalues${n}`)?.label ?? '';
+      const bank = num(wlLabel.match(/ระดับตลิ่ง\s*(-?[\d.]+)/)?.[1]);
+      const zg = num(wlLabel.match(/ZG\s*([+-]?[\d.]+)/)?.[1]);
+      const qMax = num(qLabel.match(/ปริมาณ\s*([\d.]+)/)?.[1]);
+      const pts = rows.filter((r) => r[`wlvalues${n}`] !== null && r[`wlvalues${n}`] !== undefined);
+      if (!pts.length) return;
+      const last = pts[pts.length - 1];
+      const prev3 = pts.length > 3 ? pts[pts.length - 4] : pts[0];
+      const wl = +Number(last[`wlvalues${n}`]).toFixed(2);
+      const ch = wl - Number(prev3[`wlvalues${n}`]);
+      const hour = Number(last.hourlytime);
+      // เวลาในตาราง = ชั่วโมงของวันนั้น (เวลาไทย) · 24.00 = เที่ยงคืนวันถัดไป
+      const t = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), hour - 7));
+      out.set(code, {
+        source: 'RID-HYD',
+        time: t.toISOString(),
+        wl_msl: zg !== null ? +(zg + wl).toFixed(3) : null,
+        bank_msl: zg !== null && bank !== null ? +(zg + bank).toFixed(3) : null,
+        diff_bank: bank !== null ? +(wl - bank).toFixed(3) : null,
+        pct_bank: null,
+        trend: pts.length < 2 ? null : ch > 0.02 ? 'เพิ่มขึ้น' : ch < -0.02 ? 'ลดลง' : 'คงที่',
+        q: num(last[`qvalues${n}`]),
+        q_max: qMax,
+        province: prov[i] ?? null,
+      });
+    });
+    return out;
+  };
+  const thaiToday = new Date(now.getTime() + 7 * 36e5);
+  const today = parse(await day(now), thaiToday);
+  if (today.size >= 5) return today;
+  // หลังเที่ยงคืนตารางวันใหม่ยังว่าง → ใช้ของเมื่อวาน
+  const y = new Date(now.getTime() - 86400e3);
+  return parse(await day(y), new Date(y.getTime() + 7 * 36e5));
+}
+
 // ปภ. — ระบบเฝ้าระวังภัยพิบัติตามลุ่มน้ำ (cctv.disaster.go.th) · สถานีวัดระดับน้ำ (ไม้วัด) พร้อมกล้อง อัปเดตทุก 5 นาที
 // ระดับน้ำเป็นค่าไม้วัดของแต่ละสถานี → ใช้ "เทียบตลิ่ง" (ระดับ − ตลิ่ง ในหน่วยเดียวกัน) · wl_msl คำนวณจากระดับตลิ่ง ม.รทก. ของ ปภ.
 // เวลาวัดใช้ histories[0].timeStamp (UTC) จากหน้ารายละเอียดสถานี

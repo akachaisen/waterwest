@@ -11,14 +11,20 @@ var STATIONS = [
   { code: "MKVKD01", src: "tw", egat: "VKD01", seg: "A", name: "\u0E2D.\u0E17\u0E2D\u0E07\u0E1C\u0E32\u0E20\u0E39\u0E21\u0E34" },
   { code: "MKVKD02", src: "tw", egat: "VKD02", seg: "A", name: "\u0E1A\u0E49\u0E32\u0E19\u0E2B\u0E34\u0E19\u0E14\u0E32\u0E14" },
   { code: "K.54", src: "swoc", egat: "VKD03", seg: "A", name: "\u0E1A\u0E49\u0E32\u0E19\u0E25\u0E34\u0E48\u0E19\u0E16\u0E34\u0E48\u0E19 \u0E17\u0E2D\u0E07\u0E1C\u0E32\u0E20\u0E39\u0E21\u0E34" },
+  { code: "K.31", src: "swoc", seg: "A", name: "\u0E1A\u0E49\u0E32\u0E19\u0E19\u0E49\u0E33\u0E42\u0E08\u0E19 \u0E44\u0E17\u0E23\u0E42\u0E22\u0E04 (\u0E2B\u0E49\u0E27\u0E22\u0E41\u0E21\u0E48\u0E19\u0E49\u0E33\u0E19\u0E49\u0E2D\u0E22)" },
   { code: "KRI01", src: "ddpm", seg: "A", name: "\u0E2A\u0E30\u0E1E\u0E32\u0E19\u0E1A\u0E49\u0E32\u0E19\u0E41\u0E21\u0E48\u0E19\u0E49\u0E33\u0E19\u0E49\u0E2D\u0E22 \u0E44\u0E17\u0E23\u0E42\u0E22\u0E04", cams: 2 },
   { code: "K.58", src: "swoc", egat: "VKD04", seg: "A", name: "\u0E1A\u0E49\u0E32\u0E19\u0E1B\u0E32\u0E01\u0E41\u0E0B\u0E07 \u0E44\u0E17\u0E23\u0E42\u0E22\u0E04" },
   { code: "KRI02", src: "ddpm", seg: "A", name: "\u0E2A\u0E30\u0E1E\u0E32\u0E19\u0E1B\u0E32\u0E01\u0E41\u0E01\u0E41\u0E0B\u0E07 \u0E44\u0E17\u0E23\u0E42\u0E22\u0E04", cams: 2 },
   { code: "K.10", src: "swoc", egat: "VKD05", seg: "A", name: "\u0E1A\u0E49\u0E32\u0E19\u0E25\u0E38\u0E48\u0E21\u0E2A\u0E38\u0E48\u0E21 \u0E44\u0E17\u0E23\u0E42\u0E22\u0E04" },
   { code: "KRI03", src: "ddpm", seg: "A", name: "\u0E2A\u0E30\u0E1E\u0E32\u0E19\u0E27\u0E31\u0E07\u0E42\u0E1E \u0E44\u0E17\u0E23\u0E42\u0E22\u0E04", cams: 2 },
   { code: "K.37", src: "swoc", egat: "VKD06", seg: "A", name: "\u0E1A\u0E49\u0E32\u0E19\u0E27\u0E31\u0E07\u0E40\u0E22\u0E47\u0E19 \u0E14\u0E48\u0E32\u0E19\u0E21\u0E30\u0E02\u0E32\u0E21\u0E40\u0E15\u0E35\u0E49\u0E22", key: true },
+  { code: "K.25A", src: "swoc", seg: "A", name: "\u0E1A\u0E49\u0E32\u0E19\u0E04\u0E32 (\u0E15\u0E49\u0E19\u0E25\u0E33\u0E20\u0E32\u0E0A\u0E35)" },
+  { code: "K.64", src: "swoc", seg: "A", name: "\u0E1A\u0E49\u0E32\u0E19\u0E17\u0E38\u0E48\u0E07\u0E41\u0E2B\u0E25\u0E21 \u0E2A\u0E27\u0E19\u0E1C\u0E36\u0E49\u0E07 (\u0E25\u0E33\u0E20\u0E32\u0E0A\u0E35)", lat: 13.61917, lon: 99.40722 },
+  { code: "K.61", src: "swoc", seg: "A", name: "\u0E1A\u0E49\u0E32\u0E19\u0E14\u0E48\u0E32\u0E19\u0E17\u0E31\u0E1A\u0E15\u0E30\u0E42\u0E01 \u0E08\u0E2D\u0E21\u0E1A\u0E36\u0E07 (\u0E25\u0E33\u0E20\u0E32\u0E0A\u0E35)", lat: 13.69252, lon: 99.44974 },
+  { code: "K.62", src: "swoc", seg: "A", name: "\u0E1A\u0E49\u0E32\u0E19\u0E2B\u0E19\u0E2D\u0E07\u0E44\u0E1C\u0E48 \u0E14\u0E48\u0E32\u0E19\u0E21\u0E30\u0E02\u0E32\u0E21\u0E40\u0E15\u0E35\u0E49\u0E22 (\u0E25\u0E33\u0E20\u0E32\u0E0A\u0E35)" },
   { code: "KRI04", src: "ddpm", seg: "A", name: "\u0E2A\u0E30\u0E1E\u0E32\u0E19\u0E27\u0E31\u0E14\u0E2B\u0E34\u0E19\u0E41\u0E17\u0E48\u0E19 \u0E25\u0E33\u0E20\u0E32\u0E0A\u0E35 \u0E14\u0E48\u0E32\u0E19\u0E21\u0E30\u0E02\u0E32\u0E21\u0E40\u0E15\u0E35\u0E49\u0E22", cams: 2 },
   { code: "KRI05", src: "ddpm", seg: "A", name: "\u0E2A\u0E30\u0E1E\u0E32\u0E19\u0E2B\u0E19\u0E2D\u0E07\u0E2B\u0E0D\u0E49\u0E32 \u0E40\u0E21\u0E37\u0E2D\u0E07\u0E01\u0E32\u0E0D\u0E08\u0E19\u0E1A\u0E38\u0E23\u0E35", cams: 2 },
+  { code: "K.49", src: "swoc", seg: "B", name: "\u0E1A\u0E49\u0E32\u0E19\u0E22\u0E32\u0E07\u0E2A\u0E39\u0E07 \u0E1A\u0E48\u0E2D\u0E1E\u0E25\u0E2D\u0E22 (\u0E25\u0E33\u0E15\u0E30\u0E40\u0E1E\u0E34\u0E19)" },
   { code: "KRI09", src: "ddpm", seg: "B", name: "\u0E2A\u0E30\u0E1E\u0E32\u0E19 \u0E22\u0E18. \u0E2B\u0E19\u0E2D\u0E07\u0E1B\u0E23\u0E37\u0E2D (\u0E25\u0E33\u0E15\u0E30\u0E40\u0E1E\u0E34\u0E19)", cams: 2 },
   { code: "KRI06", src: "ddpm", seg: "B", name: "\u0E2A\u0E30\u0E1E\u0E32\u0E19\u0E1A\u0E49\u0E32\u0E19\u0E0A\u0E48\u0E2D\u0E07\u0E2A\u0E30\u0E40\u0E14\u0E32", cams: 2 },
   { code: "KRI07", src: "ddpm", seg: "B", name: "\u0E25\u0E32\u0E14\u0E2B\u0E0D\u0E49\u0E32 (\u0E2A\u0E30\u0E1E\u0E32\u0E19\u0E2B\u0E25\u0E27\u0E07\u0E1E\u0E48\u0E2D\u0E25\u0E33\u0E43\u0E22)", cams: 2 },
@@ -27,6 +33,7 @@ var STATIONS = [
   { code: "K.3A", src: "swoc", seg: "C", name: "\u0E2B\u0E19\u0E49\u0E32\u0E28\u0E32\u0E25\u0E32\u0E01\u0E25\u0E32\u0E07 \u0E08.\u0E01\u0E32\u0E0D\u0E08\u0E19\u0E1A\u0E38\u0E23\u0E35" },
   { code: "MKSND03", src: "tw", egat: "SND03", seg: "C", name: "\u0E27\u0E31\u0E14\u0E44\u0E0A\u0E22\u0E0A\u0E38\u0E21\u0E1E\u0E25\u0E0A\u0E19\u0E30\u0E2A\u0E07\u0E04\u0E23\u0E32\u0E21 (\u0E27\u0E31\u0E14\u0E43\u0E15\u0E49)" },
   { code: "K.11A", src: "swoc", seg: "E", name: "\u0E1A\u0E49\u0E32\u0E19\u0E27\u0E31\u0E07\u0E02\u0E19\u0E32\u0E22 \u0E17\u0E48\u0E32\u0E21\u0E48\u0E27\u0E07" },
+  { code: "K.63", src: "swoc", seg: "E", name: "\u0E1A\u0E49\u0E32\u0E19\u0E43\u0E2B\u0E21\u0E48 \u0E17\u0E48\u0E32\u0E21\u0E48\u0E27\u0E07", lat: 13.92983, lon: 99.66823 },
   { code: "KRI08", src: "ddpm", seg: "E", name: "\u0E2A\u0E27\u0E19\u0E2A\u0E32\u0E18\u0E32\u0E23\u0E13\u0E30 \u0E23.10 \u0E17\u0E48\u0E32\u0E21\u0E48\u0E27\u0E07", cams: 2 },
   { code: "K.55A", src: "swoc", seg: "E", name: "\u0E2A\u0E30\u0E1E\u0E32\u0E19\u0E04\u0E48\u0E32\u0E22\u0E2B\u0E25\u0E27\u0E07 \u0E1A\u0E49\u0E32\u0E19\u0E42\u0E1B\u0E48\u0E07", key: true },
   { code: "RAJ002", src: "tw", seg: "E", name: "\u0E1A\u0E49\u0E32\u0E19\u0E42\u0E1B\u0E48\u0E07" },
@@ -168,6 +175,70 @@ async function fetchRidDams(dams = []) {
     return out;
   }
 }
+var HYD = "https://hyd-app.rid.go.th/webservice";
+var thaiDateBE = (d) => {
+  const t = new Date(d.getTime() + 7 * 36e5);
+  return `${String(t.getUTCDate()).padStart(2, "0")}/${String(t.getUTCMonth() + 1).padStart(2, "0")}/${t.getUTCFullYear() + 543}`;
+};
+async function hydPost(path, body, form = false) {
+  const res = await fetch(`${HYD}/${path}`, {
+    method: "POST",
+    headers: { "User-Agent": UA, "Content-Type": form ? "application/x-www-form-urlencoded" : "application/json; charset=utf-8" },
+    body,
+    signal: AbortSignal.timeout(45e3)
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status} ${path}`);
+  return res.json();
+}
+async function fetchRidHourly(now = /* @__PURE__ */ new Date()) {
+  const day = async (d) => {
+    const tc = thaiDateBE(d);
+    const dw = { UtokID: "7", BasinID: "14", TimeCurrent: tc };
+    const model = await hydPost("HDService.svc/GetColModelAllHL", JSON.stringify({ hydro: dw }));
+    const form = new URLSearchParams({ "DW[UtokID]": "7", "DW[BasinID]": "14", "DW[TimeCurrent]": tc, _search: "false", rows: "100", page: "1", sidx: "indexhourly", sord: "asc" });
+    const data = await hydPost("getGroupHourlyWaterLevelReportAllHL.ashx", form.toString(), true);
+    return { model, rows: data.rows ?? [], date: new Date(now.getTime() + 7 * 36e5 - (now - d)) };
+  };
+  const parse = ({ model, rows }, d) => {
+    const codes = model.groupHeadersStationCode.map((x) => x.titleText.trim());
+    const prov = (model.groupHeadersStationProvince ?? []).map((x) => x.titleText);
+    const out = /* @__PURE__ */ new Map();
+    codes.forEach((code, i) => {
+      const n = i + 1;
+      const wlLabel = model.colModel.find((c) => c.name === `wlvalues${n}`)?.label ?? "";
+      const qLabel = model.colModel.find((c) => c.name === `qvalues${n}`)?.label ?? "";
+      const bank = num(wlLabel.match(/ระดับตลิ่ง\s*(-?[\d.]+)/)?.[1]);
+      const zg = num(wlLabel.match(/ZG\s*([+-]?[\d.]+)/)?.[1]);
+      const qMax = num(qLabel.match(/ปริมาณ\s*([\d.]+)/)?.[1]);
+      const pts = rows.filter((r) => r[`wlvalues${n}`] !== null && r[`wlvalues${n}`] !== void 0);
+      if (!pts.length) return;
+      const last = pts[pts.length - 1];
+      const prev3 = pts.length > 3 ? pts[pts.length - 4] : pts[0];
+      const wl = +Number(last[`wlvalues${n}`]).toFixed(2);
+      const ch = wl - Number(prev3[`wlvalues${n}`]);
+      const hour = Number(last.hourlytime);
+      const t = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), hour - 7));
+      out.set(code, {
+        source: "RID-HYD",
+        time: t.toISOString(),
+        wl_msl: zg !== null ? +(zg + wl).toFixed(3) : null,
+        bank_msl: zg !== null && bank !== null ? +(zg + bank).toFixed(3) : null,
+        diff_bank: bank !== null ? +(wl - bank).toFixed(3) : null,
+        pct_bank: null,
+        trend: pts.length < 2 ? null : ch > 0.02 ? "\u0E40\u0E1E\u0E34\u0E48\u0E21\u0E02\u0E36\u0E49\u0E19" : ch < -0.02 ? "\u0E25\u0E14\u0E25\u0E07" : "\u0E04\u0E07\u0E17\u0E35\u0E48",
+        q: num(last[`qvalues${n}`]),
+        q_max: qMax,
+        province: prov[i] ?? null
+      });
+    });
+    return out;
+  };
+  const thaiToday = new Date(now.getTime() + 7 * 36e5);
+  const today = parse(await day(now), thaiToday);
+  if (today.size >= 5) return today;
+  const y = new Date(now.getTime() - 864e5);
+  return parse(await day(y), new Date(y.getTime() + 7 * 36e5));
+}
 var DDPM = "https://cctv.disaster.go.th/api/v1";
 async function fetchDdpm(codes, provinces = ["71", "70", "75", "74"]) {
   const want = new Set(codes);
@@ -261,6 +332,7 @@ async function collect() {
     rain: fetchRain(RAIN_POINTS),
     sea: fetchSeaLevel(SEA_POINT),
     cctv: checkCctv(CCTV),
+    ridHourly: fetchRidHourly(),
     ddpm: fetchDdpm(STATIONS.filter((s) => s.src === "ddpm").map((s) => s.code))
   };
   const keys = Object.keys(jobs);
@@ -275,6 +347,8 @@ async function collect() {
     const primary = st.src === "ddpm" ? src.ddpm : st.src === "swoc" ? src.swoc : src.thaiwater;
     const fallback = st.src === "ddpm" ? null : st.src === "swoc" ? src.thaiwater : src.swoc;
     let rec = primary?.get(st.code) ?? fallback?.get(st.code) ?? null;
+    const hyd = st.src === "swoc" ? src.ridHourly?.get(st.code) : null;
+    if (hyd && (!rec?.time || new Date(hyd.time) > new Date(rec.time))) rec = { ...rec, ...hyd, q_max: hyd.q_max ?? rec?.q_max ?? null };
     const egat = st.egat ? src.egat?.get(st.egat) : null;
     if (!rec && egat) rec = { source: "EGAT", time: egat.time, wl_msl: egat.wl_msl, q: egat.q, diff_bank: null };
     if (!rec) return { ...st, missing: true, status: { level: "unknown", label: "\u0E44\u0E21\u0E48\u0E1E\u0E1A\u0E02\u0E49\u0E2D\u0E21\u0E39\u0E25" } };
@@ -305,8 +379,8 @@ async function collect() {
       source: rec.source,
       river: rec.river,
       province: rec.province,
-      lat: rec.lat,
-      lon: rec.lon,
+      lat: rec.lat ?? st.lat ?? null,
+      lon: rec.lon ?? st.lon ?? null,
       time: rec.time,
       age_h: age !== null ? +age.toFixed(1) : null,
       stale: age !== null && age > STALE_HOURS,

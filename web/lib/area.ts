@@ -1,7 +1,7 @@
 import "server-only";
 import riversData from "@/data/rivers.json";
 import tambonsData from "@/data/tambons.json";
-import { CANAL_STATIONS, KM_FROM_MAEKLONG_DAM, travelHours } from "./route";
+import { CANAL_STATIONS, KM_FROM_MAEKLONG_DAM, travelHours, TRIBUTARY } from "./route";
 import type { Level, Snapshot, Station } from "./types";
 
 // ---------- ข้อมูลพื้นที่ ----------
@@ -147,10 +147,6 @@ export function analyze(place: Place, s: Snapshot): AreaReport {
     { name: "แม่น้ำแม่กลอง (เหนือเขื่อนแม่กลอง)", d: nearLines(p, RIVERS.maeklong_up) },
   ];
   const up = others.reduce((a, b) => (b.d < a.d ? b : a));
-  const onLower = mk.dist <= up.d;
-  const riverName = onLower ? "แม่น้ำแม่กลอง" : up.name;
-  const riverDist = onLower ? mk.dist : up.d;
-  const type: RiskType = riverDist <= 1 ? "riverside" : riverDist <= 5 ? "near" : "far";
 
   const withCoords = s.stations.filter((x) => x.lat !== null && x.lon !== null);
   const nearest = withCoords
@@ -158,13 +154,21 @@ export function analyze(place: Place, s: Snapshot): AreaReport {
     .sort((a, b) => a.distKm - b.distKm)
     .slice(0, 3);
 
+  // พื้นที่ห่างแม่น้ำสายหลักเกิน 15 กม. แต่มีสถานีบนลำน้ำสาขาใกล้ ๆ (เช่น ลำภาชี สวนผึ้ง–จอมบึง) → ใช้ลำน้ำนั้นประเมิน
+  const mainDist = Math.min(mk.dist, up.d);
+  const local = mainDist > 15 ? nearest.find((n) => !n.canal && !n.station.stale && n.station.diffBank !== null && n.distKm <= 15) : undefined;
+  const onLower = !local && mk.dist <= up.d;
+  const riverName = local ? (TRIBUTARY.get(local.station.code) ?? "ลำน้ำใกล้พื้นที่") : onLower ? "แม่น้ำแม่กลอง" : up.name;
+  const riverDist = local ? local.distKm : onLower ? mk.dist : up.d;
+  const type: RiskType = riverDist <= 1 ? "riverside" : riverDist <= 5 ? "near" : "far";
+
   // สถานีอ้างอิง: บนแม่น้ำแม่กลองสายหลัก ใกล้ตำแหน่งตามลำน้ำที่สุด (ถ้าพื้นที่อยู่ช่วงล่าง) ไม่งั้นใช้สถานีใกล้สุดที่ไม่ใช่คลอง
   let ref: Station | null = null;
   if (onLower) {
     const main = s.stations.filter((x) => KM_FROM_MAEKLONG_DAM[x.code] !== undefined && !CANAL_STATIONS.has(x.code) && !x.stale && x.diffBank !== null);
     ref = main.sort((a, b) => Math.abs(KM_FROM_MAEKLONG_DAM[a.code] - mk.chain) - Math.abs(KM_FROM_MAEKLONG_DAM[b.code] - mk.chain))[0] ?? null;
   } else {
-    ref = nearest.find((n) => !n.canal && !n.station.stale && n.station.diffBank !== null)?.station ?? null;
+    ref = local?.station ?? nearest.find((n) => !n.canal && !n.station.stale && n.station.diffBank !== null)?.station ?? null;
   }
 
   // เวลามวลน้ำ: ใช้บ้านโป่ง (K.55A) เป็นต้นทาง ถ้าพื้นที่อยู่ท้ายบ้านโป่ง · ถ้าอยู่ระหว่างเขื่อน–บ้านโป่ง ใช้ K.11A

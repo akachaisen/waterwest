@@ -114,7 +114,7 @@ function Branch({ id, title, dam, damName, stations }: { id: string; title: stri
           sub={dam ? `ข้อมูลวันที่ ${dam.date}` : "ไม่มีข้อมูลเขื่อน"}
           extra={dam && <DamFacts dam={dam} />}
         />
-        {stations.map((x) => <StationNode key={x.code} s={x} tributary={TRIBUTARY.has(x.code)} />)}
+        {stations.map((x) => <StationNode key={x.code} s={x} tributary={TRIBUTARY.get(x.code)} />)}
         <li className="relative pb-0 pl-6 text-xs text-muted">
           <span className="absolute -left-[7px] top-0.5 text-river" aria-hidden>▼</span>
           ไหลลงจุดรวมแม่น้ำ จ.กาญจนบุรี
@@ -167,7 +167,7 @@ function SegmentLabel({ id, children }: { id: string; children: React.ReactNode 
   );
 }
 
-function StationNode({ s, km, tributary }: { s: Station; km?: number; tributary?: boolean }) {
+function StationNode({ s, km, tributary }: { s: Station; km?: number; tributary?: string }) {
   return (
     <li className="relative pb-5 pl-6">
       <span
@@ -182,7 +182,7 @@ function StationNode({ s, km, tributary }: { s: Station; km?: number; tributary?
           </h3>
           <p className="text-xs text-muted">
             {s.code}
-            {tributary && " · ลำน้ำสาขา (ลำตะเพิน)"}
+            {tributary && ` · ลำน้ำสาขา (${tributary})`}
             {CANAL_STATIONS.has(s.code) && " · สถานีในคลอง (ไม่ใช่แม่น้ำสายหลัก)"}
             {s.source && ` · ${s.source}`}
           </p>

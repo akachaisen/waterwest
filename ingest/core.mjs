@@ -2,7 +2,7 @@
 // ใช้ร่วมกันระหว่าง Node (snapshot.mjs) และ Supabase Edge Function — ห้ามใช้ node:* ในไฟล์นี้
 
 import { STATIONS, SEGMENTS, DAMS, RAIN_POINTS, SEA_POINT, CCTV } from './stations.mjs';
-import { fetchThaiWater, fetchSwoc, fetchEgat, fetchRidDams, fetchRain, fetchSeaLevel, checkCctv, fetchDdpm } from './sources.mjs';
+import { fetchThaiWater, fetchSwoc, fetchEgat, fetchRidDams, fetchRain, fetchSeaLevel, checkCctv, fetchDdpm, fetchRidHourly } from './sources.mjs';
 
 const STALE_HOURS = 3;
 
@@ -28,6 +28,7 @@ export async function collect() {
     rain: fetchRain(RAIN_POINTS),
     sea: fetchSeaLevel(SEA_POINT),
     cctv: checkCctv(CCTV),
+    ridHourly: fetchRidHourly(),
     ddpm: fetchDdpm(STATIONS.filter((s) => s.src === 'ddpm').map((s) => s.code)),
   };
   const keys = Object.keys(jobs);
@@ -44,6 +45,9 @@ export async function collect() {
     const primary = st.src === 'ddpm' ? src.ddpm : st.src === 'swoc' ? src.swoc : src.thaiwater;
     const fallback = st.src === 'ddpm' ? null : st.src === 'swoc' ? src.thaiwater : src.swoc;
     let rec = primary?.get(st.code) ?? fallback?.get(st.code) ?? null;
+    // สถานีกรมชลฯ: ใช้ค่ารายชั่วโมง (hyd-app) ถ้าใหม่กว่า — คงพิกัด/ชื่อลำน้ำจาก SWOC ไว้
+    const hyd = st.src === 'swoc' ? src.ridHourly?.get(st.code) : null;
+    if (hyd && (!rec?.time || new Date(hyd.time) > new Date(rec.time))) rec = { ...rec, ...hyd, q_max: hyd.q_max ?? rec?.q_max ?? null };
     const egat = st.egat ? src.egat?.get(st.egat) : null;
     if (!rec && egat) rec = { source: 'EGAT', time: egat.time, wl_msl: egat.wl_msl, q: egat.q, diff_bank: null };
     if (!rec) return { ...st, missing: true, status: { level: 'unknown', label: 'ไม่พบข้อมูล' } };
@@ -66,7 +70,7 @@ export async function collect() {
       source: rec.source,
       river: rec.river,
       province: rec.province,
-      lat: rec.lat, lon: rec.lon,
+      lat: rec.lat ?? st.lat ?? null, lon: rec.lon ?? st.lon ?? null,
       time: rec.time,
       age_h: age !== null ? +age.toFixed(1) : null,
       stale: age !== null && age > STALE_HOURS,

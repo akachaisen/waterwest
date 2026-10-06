@@ -1,5 +1,6 @@
 // ทะเบียนสถานีตามเส้นทางน้ำ เรียงจากต้นน้ำไปปลายน้ำ
 // src: 'swoc' = กรมชลฯ SWOC, 'tw' = ThaiWater (สสน.), 'ddpm' = ปภ. (cctv.disaster.go.th มีกล้อง) · egat = รหัสในตารางโทรมาตร กฟผ. (ใช้ดึงความจุลำน้ำ)
+// สถานี K.* ใช้ค่ารายชั่วโมงของกรมชลฯ (hyd-app) ถ้าใหม่กว่า SWOC · lat/lon ใส่เฉพาะสถานีที่ SWOC ไม่มีพิกัด
 // cams = จำนวนกล้องของสถานี ปภ. (ภาพ: /api/webrtc/public-frame.jpeg?src=<code>-01)
 
 export const SEGMENTS = [
@@ -15,14 +16,20 @@ export const STATIONS = [
   { code: 'MKVKD01', src: 'tw', egat: 'VKD01', seg: 'A', name: 'อ.ทองผาภูมิ' },
   { code: 'MKVKD02', src: 'tw', egat: 'VKD02', seg: 'A', name: 'บ้านหินดาด' },
   { code: 'K.54', src: 'swoc', egat: 'VKD03', seg: 'A', name: 'บ้านลิ่นถิ่น ทองผาภูมิ' },
+  { code: 'K.31', src: 'swoc', seg: 'A', name: 'บ้านน้ำโจน ไทรโยค (ห้วยแม่น้ำน้อย)' },
   { code: 'KRI01', src: 'ddpm', seg: 'A', name: 'สะพานบ้านแม่น้ำน้อย ไทรโยค', cams: 2 },
   { code: 'K.58', src: 'swoc', egat: 'VKD04', seg: 'A', name: 'บ้านปากแซง ไทรโยค' },
   { code: 'KRI02', src: 'ddpm', seg: 'A', name: 'สะพานปากแกแซง ไทรโยค', cams: 2 },
   { code: 'K.10', src: 'swoc', egat: 'VKD05', seg: 'A', name: 'บ้านลุ่มสุ่ม ไทรโยค' },
   { code: 'KRI03', src: 'ddpm', seg: 'A', name: 'สะพานวังโพ ไทรโยค', cams: 2 },
   { code: 'K.37', src: 'swoc', egat: 'VKD06', seg: 'A', name: 'บ้านวังเย็น ด่านมะขามเตี้ย', key: true },
+  { code: 'K.25A', src: 'swoc', seg: 'A', name: 'บ้านคา (ต้นลำภาชี)' },
+  { code: 'K.64', src: 'swoc', seg: 'A', name: 'บ้านทุ่งแหลม สวนผึ้ง (ลำภาชี)', lat: 13.61917, lon: 99.40722 },
+  { code: 'K.61', src: 'swoc', seg: 'A', name: 'บ้านด่านทับตะโก จอมบึง (ลำภาชี)', lat: 13.69252, lon: 99.44974 },
+  { code: 'K.62', src: 'swoc', seg: 'A', name: 'บ้านหนองไผ่ ด่านมะขามเตี้ย (ลำภาชี)' },
   { code: 'KRI04', src: 'ddpm', seg: 'A', name: 'สะพานวัดหินแท่น ลำภาชี ด่านมะขามเตี้ย', cams: 2 },
   { code: 'KRI05', src: 'ddpm', seg: 'A', name: 'สะพานหนองหญ้า เมืองกาญจนบุรี', cams: 2 },
+  { code: 'K.49', src: 'swoc', seg: 'B', name: 'บ้านยางสูง บ่อพลอย (ลำตะเพิน)' },
   { code: 'KRI09', src: 'ddpm', seg: 'B', name: 'สะพาน ยธ. หนองปรือ (ลำตะเพิน)', cams: 2 },
   { code: 'KRI06', src: 'ddpm', seg: 'B', name: 'สะพานบ้านช่องสะเดา', cams: 2 },
   { code: 'KRI07', src: 'ddpm', seg: 'B', name: 'ลาดหญ้า (สะพานหลวงพ่อลำใย)', cams: 2 },
@@ -31,6 +38,7 @@ export const STATIONS = [
   { code: 'K.3A', src: 'swoc', seg: 'C', name: 'หน้าศาลากลาง จ.กาญจนบุรี' },
   { code: 'MKSND03', src: 'tw', egat: 'SND03', seg: 'C', name: 'วัดไชยชุมพลชนะสงคราม (วัดใต้)' },
   { code: 'K.11A', src: 'swoc', seg: 'E', name: 'บ้านวังขนาย ท่าม่วง' },
+  { code: 'K.63', src: 'swoc', seg: 'E', name: 'บ้านใหม่ ท่าม่วง', lat: 13.92983, lon: 99.66823 },
   { code: 'KRI08', src: 'ddpm', seg: 'E', name: 'สวนสาธารณะ ร.10 ท่าม่วง', cams: 2 },
   { code: 'K.55A', src: 'swoc', seg: 'E', name: 'สะพานค่ายหลวง บ้านโป่ง', key: true },
   { code: 'RAJ002', src: 'tw', seg: 'E', name: 'บ้านโป่ง' },
