@@ -1,5 +1,5 @@
 import type { Level } from "@/lib/types";
-import { fmtAge, fmtTime, LEVEL_TEXT } from "@/lib/status";
+import { DDPM_SIGN, fmtAge, fmtTime, LEVEL_TEXT } from "@/lib/status";
 
 const TEXT: Record<Level, string> = {
   red: "text-red",
@@ -33,6 +33,18 @@ export function Badge({ level, children }: { level: Level; children?: React.Reac
       <span className={`size-1.5 rounded-full ${DOT[level]}`} aria-hidden />
       {children ?? LEVEL_TEXT[level]}
     </span>
+  );
+}
+
+// ป้ายระดับของ ปภ. — ข้อความทางการของสถานี ปภ. (KRIxx)
+export function DdpmSign({ sign, compact = false }: { sign: number | null | undefined; compact?: boolean }) {
+  const s = sign ? DDPM_SIGN[sign] : undefined;
+  if (!s) return null;
+  return (
+    <p className={`rounded-lg ${compact ? "px-2 py-1 text-xs" : "px-3 py-2 text-sm"} ${BG[s.level]}`}>
+      <span className="text-muted">ป้ายระดับของ ปภ.: </span>
+      <b className={TEXT[s.level]}>{s.text}</b>
+    </p>
   );
 }
 

@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
       level: r.ref ? r.level : "unknown",
       levelText: r.ref ? LEVEL_TEXT[r.level] : "ไม่มีข้อมูล",
       river: { name: r.river.name, distKm: Math.round(r.river.distKm * 10) / 10, type: r.river.type },
-      ref: r.ref ? { code: r.ref.code, name: r.ref.name, diffBank: r.ref.diffBank, trend: r.ref.trend, time: r.ref.time, stale: r.ref.stale } : null,
+      ref: r.ref ? { code: r.ref.code, name: r.ref.name, diffBank: r.ref.diffBank, trend: r.ref.trend, time: r.ref.time, stale: r.ref.stale, sign: r.ref.sign } : null,
       eta: r.eta ? { from: r.eta.from.name, hours: Math.round(r.eta.hours), at: r.eta.at } : null,
       tide: r.tide,
       generatedAt: s.generatedAt,

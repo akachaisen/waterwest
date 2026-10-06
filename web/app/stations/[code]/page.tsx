@@ -5,7 +5,7 @@ import { getSnapshot } from "@/lib/data";
 import { getStationHistory, summarize } from "@/lib/history";
 import { bankText, changeText, fmt, fmtTime } from "@/lib/status";
 import { KM_FROM_MAEKLONG_DAM, SEGMENTS, travelHours } from "@/lib/route";
-import { Badge, Card, levelText, Measured, Trend } from "@/components/ui";
+import { Badge, Card, DdpmSign, levelText, Measured, Trend } from "@/components/ui";
 import { LineChart } from "@/components/LineChart";
 import { HouseThreshold } from "@/components/HouseThreshold";
 import { CameraGrid } from "@/components/CameraGrid";
@@ -70,6 +70,7 @@ export default async function StationPage({ params }: Params) {
         </Stat>
       </div>
       <Measured time={st.time} ageMin={st.ageMin} stale={st.stale} />
+      {!st.stale && <DdpmSign sign={st.sign} />}
       {st.diffBank !== null && <HouseThreshold code={st.code} name={st.name} diffBank={st.diffBank} time={st.time} />}
       {DDPM_CAMERAS.some((c) => c.station === st.code) && (
         <section className="space-y-2">

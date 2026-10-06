@@ -256,7 +256,7 @@ export async function fetchDdpm(codes, provinces = ['71', '70', '75', '74']) {
         province: s.provName ?? null,
         lat: num(s.latitude),
         lon: num(s.longitude),
-        ddpm_status: s.waterLevelStatus ?? null, // ป้ายระดับของ ปภ. 1–5
+        ddpm_status: num(h.status ?? s.waterLevelStatus), // ป้ายระดับของ ปภ. 1–5 (ตามเกณฑ์ของแต่ละสถานี)
       });
     }),
   );

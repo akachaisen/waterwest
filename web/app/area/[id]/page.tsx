@@ -8,7 +8,7 @@ import { TIDE_STATION, townHighs } from "@/lib/tide";
 import { CALIBRATION, OFFICIAL_RATCHABURI_H } from "@/lib/route";
 import { bankText, fmt, fmtTime, LEVEL_TEXT } from "@/lib/status";
 import type { Level } from "@/lib/types";
-import { Badge, Card, levelBg, levelDot, levelText, Measured, SectionTitle, Trend } from "@/components/ui";
+import { Badge, Card, levelBg, levelDot, levelText, Measured, SectionTitle, Trend, DdpmSign } from "@/components/ui";
 import { AreaActions } from "@/components/AreaActions";
 import { HouseThreshold } from "@/components/HouseThreshold";
 import { PROVINCE_DDPM } from "@/lib/contacts";
@@ -90,6 +90,11 @@ export default async function AreaPage({ params, searchParams }: Props) {
             <li key={x} className="flex gap-2"><span aria-hidden>•</span>{x}</li>
           ))}
         </ul>
+        {r.ref && !r.ref.stale && (r.ref.sign ?? 0) >= 2 && (
+          <div className="mt-2">
+            <DdpmSign sign={r.ref.sign} />
+          </div>
+        )}
         <h2 className="mt-3 text-sm font-semibold">ควรทำอะไร</h2>
         <ul className="mt-1 space-y-1 text-sm">
           {ADVICE[r.level].map((x) => (

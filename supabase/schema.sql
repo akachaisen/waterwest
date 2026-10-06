@@ -29,6 +29,7 @@ create table if not exists readings (
   q            numeric,               -- ปริมาณน้ำ ลบ.ม./วิ
   trend        text,
   qc           text,                  -- หมายเหตุตรวจคุณภาพข้อมูล
+  sign         smallint,              -- ป้ายระดับของ ปภ. 1–5 (เฉพาะสถานี ปภ.)
   ingested_at  timestamptz not null default now(),
   unique (station_code, source, measured_at)
 );
@@ -153,7 +154,9 @@ do $$ begin
   end if;
 end $$;
 
--- ค่าล่าสุดของแต่ละสถานี (ใช้ในหน้าเว็บ)
+alter table readings add column if not exists sign smallint;
+
+-- ค่าล่าสุดของแต่ละสถานี (ใช้ในหน้าเว็บ) · เพิ่มคอลัมน์ใน readings แล้วต้อง drop view แล้วสร้างใหม่
 create or replace view latest_readings with (security_invoker = true) as
 select distinct on (r.station_code)
   r.*, s.name, s.seg, s.is_key, s.capacity

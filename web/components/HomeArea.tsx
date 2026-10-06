@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { Level } from "@/lib/types";
 import { bankText, fmtTime, trendText } from "@/lib/status";
-import { levelBg, levelDot, levelText } from "./ui";
+import { levelBg, levelDot, levelText, DdpmSign } from "./ui";
 import { addSaved, useSavedAreas } from "./savedAreas";
 import { LINE_APP_HINT, locate, useInLineApp } from "./geo";
 import { remaining, remainingText, useThreshold } from "./thresholds";
@@ -16,7 +16,7 @@ type Summary = {
   level: Level;
   levelText: string;
   river: { name: string; distKm: number };
-  ref: { code: string; name: string; diffBank: number | null; trend: string | null; time: string | null; stale: boolean } | null;
+  ref: { code: string; name: string; diffBank: number | null; trend: string | null; time: string | null; stale: boolean; sign?: number | null } | null;
   eta: { from: string; hours: number; at: string } | null;
   tide: boolean;
 };
@@ -135,6 +135,7 @@ export function HomeArea({ quick }: { quick: QuickArea[] }) {
           ) : (
             <p className="text-sm text-muted">ไม่มีสถานีวัดน้ำที่ใช้ประเมินพื้นที่นี้ได้</p>
           )}
+          {data.ref && !data.ref.stale && (data.ref.sign ?? 0) >= 2 && <DdpmSign sign={data.ref.sign} compact />}
           {rem && (
             <p className={`rounded-lg bg-surface px-3 py-1.5 text-sm font-semibold ${levelText(rem.level)}`}>เกณฑ์บ้านฉัน: {remainingText(rem.m)}</p>
           )}

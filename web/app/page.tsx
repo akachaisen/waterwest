@@ -6,7 +6,7 @@ import { RainObsCard } from "@/components/RainObsCard";
 import { HomeArea } from "@/components/HomeArea";
 import { AskBox, type AskItem } from "@/components/AskBox";
 import { PRESETS, TAMBONS } from "@/lib/area";
-import { bankText, fmt, fmtTime, LEVEL_TEXT, overall, worst } from "@/lib/status";
+import { bankText, changeSummary, fmt, fmtTime, LEVEL_TEXT, overall, worst } from "@/lib/status";
 import { SEGMENTS } from "@/lib/route";
 import type { Dam, Level, Station } from "@/lib/types";
 import { Badge, Card, levelBg, levelDot, levelText, Measured, Meter, SectionTitle, Trend } from "@/components/ui";
@@ -37,6 +37,7 @@ export default async function Home() {
   const vrk = s.dams.find((d) => d.id === "200402");
   const snr = s.dams.find((d) => d.id === "200401");
   const alerts = s.alerts.filter((a) => a.level !== "info");
+  const ch = changeSummary(s.stations);
   const presets = PRESETS.map((p) => {
     const t = TAMBONS.find((x) => x.id === p.tambonId)!;
     return { href: `/area/${p.slug}`, name: p.name, sub: `ต.${t.t} อ.${t.a} จ.${t.p}` };
@@ -72,8 +73,16 @@ export default async function Home() {
             ))}
           </ul>
         )}
-        <p className="mt-3 text-xs text-muted">
-          ดึงข้อมูลล่าสุด {fmtTime(s.generatedAt)} · {s.origin === "supabase" ? "จากฐานข้อมูล" : "จากไฟล์ในเครื่อง (โหมดทดสอบ)"}
+        {ch.compared > 0 && (
+          <p className="tnum mt-3 text-sm">
+            <span className="text-muted">เทียบกับ 1 ชม.ก่อน: </span>
+            <b className={ch.up ? "text-orange" : ""}>↑ ขึ้น {ch.up}</b> · <b>↓ ลง {ch.down}</b> · <b>→ ทรงตัว {ch.flat}</b>
+            <span className="text-muted"> สถานี</span>
+          </p>
+        )}
+        <p className="mt-1 text-xs text-muted">
+          ข้อมูลสด {ch.live} จาก {ch.total} สถานี · ดึงข้อมูลล่าสุด {fmtTime(s.generatedAt)}
+          {s.origin === "supabase" ? "" : " · จากไฟล์ในเครื่อง (โหมดทดสอบ)"}
         </p>
       </section>
 

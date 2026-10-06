@@ -1,7 +1,7 @@
 import "server-only";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { classify, damDerived, STALE_MIN } from "./status";
+import { classify, damDerived, STALE_MIN, trendOf } from "./status";
 import type { Alert, RainPoint, Snapshot, Station } from "./types";
 
 // แหล่งข้อมูลของเว็บ:
@@ -11,6 +11,7 @@ import type { Alert, RainPoint, Snapshot, Station } from "./types";
 type RawStation = {
   code: string; name: string; seg: string; is_key: boolean; lat?: number | null; lon?: number | null; source: string | null; time: string | null;
   wl: number | null; diff_bank: number | null; q: number | null; capacity: number | null; trend: string | null;
+  sign?: number | null; change1h?: number | null;
 };
 
 const num = (v: unknown): number | null => (v === null || v === undefined || v === "" ? null : Number(v));
@@ -36,7 +37,10 @@ function toStation(r: RawStation, now: number): Station {
     q,
     capacity,
     qPct: q && capacity ? Math.round((q / capacity) * 100) : null,
-    trend: r.trend,
+    // สถานีที่แหล่งข้อมูลไม่บอกแนวโน้ม (เช่น ปภ.) ใช้การเปลี่ยนจากราว 1 ชม.ก่อนแทน
+    trend: r.trend ?? trendOf(r.change1h ?? null),
+    sign: num(r.sign),
+    change1h: r.change1h ?? null,
     ...classify(diffBank),
   };
 }
@@ -89,14 +93,24 @@ async function fromSupabase(url: string, key: string): Promise<Snapshot> {
   };
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   type Any = any;
-  const [latest, runs, dams, rain, sea, coords] = await Promise.all([
+  const since = new Date(Date.now() - 5 * 3600e3).toISOString();
+  const [latest, runs, dams, rain, sea, coords, recent] = await Promise.all([
     get<Any[]>("latest_readings?select=*"),
     get<Any[]>("ingest_runs?select=*&order=started_at.desc&limit=1"),
     get<Any[]>("dam_daily?select=*&order=date.desc&limit=6"),
     get<Any[]>("rain_forecast?select=*&order=issued_on.desc,forecast_date.asc&limit=60"),
     get<Any[]>(`sea_level?select=*&at=gte.${new Date(Date.now() - 3600e3).toISOString()}&order=at.asc&limit=24`),
     get<Any[]>("stations?select=code,lat,lon"),
+    // ค่าย้อนหลัง 5 ชม. ไว้เทียบกับราว 1 ชม.ก่อน
+    get<Any[]>(`readings?select=station_code,source,measured_at,diff_bank&measured_at=gte.${since}&diff_bank=not.is.null&order=measured_at.asc&limit=3000`).catch(() => []),
   ]);
+  const hist = new Map<string, { t: number; v: number }[]>();
+  for (const r of recent) {
+    const k = `${r.station_code}|${r.source}`; // เทียบเฉพาะแหล่งเดียวกัน (แต่ละแหล่งอาจอ้างตลิ่งต่างกันเล็กน้อย)
+    const a = hist.get(k) ?? [];
+    a.push({ t: new Date(r.measured_at).getTime(), v: Number(r.diff_bank) });
+    hist.set(k, a);
+  }
   const ll = new Map(coords.map((c) => [c.code, c]));
   const now = Date.now();
   const run = runs[0];
@@ -117,7 +131,7 @@ async function fromSupabase(url: string, key: string): Promise<Snapshot> {
     origin: "supabase",
     generatedAt: run?.started_at ?? new Date().toISOString(),
     stations: latest.map((r) =>
-      toStation({ code: r.station_code, name: r.name, seg: r.seg, is_key: r.is_key, lat: ll.get(r.station_code)?.lat, lon: ll.get(r.station_code)?.lon, source: r.source, time: r.measured_at, wl: r.wl, diff_bank: r.diff_bank, q: r.q, capacity: r.capacity, trend: r.trend }, now),
+      toStation({ code: r.station_code, name: r.name, seg: r.seg, is_key: r.is_key, lat: ll.get(r.station_code)?.lat, lon: ll.get(r.station_code)?.lon, source: r.source, time: r.measured_at, wl: r.wl, diff_bank: r.diff_bank, q: r.q, capacity: r.capacity, trend: r.trend, sign: r.sign, change1h: change1h(hist.get(`${r.station_code}|${r.source}`), r.measured_at, r.diff_bank) }, now),
     ),
     dams: damRows.map((d) =>
       damDerived({ id: d.dam_id, name: d.name, date: d.date, volume: Number(d.volume), normal_storage: Number(d.normal_storage), pct: Number(d.pct), inflow_mcm: Number(d.inflow_mcm), outflow_mcm: Number(d.outflow_mcm) }),
@@ -128,4 +142,14 @@ async function fromSupabase(url: string, key: string): Promise<Snapshot> {
     seaPeak: peak ? { m: Number(peak.m), time: peak.at } : null,
     sources: run?.sources ?? {},
   };
+}
+
+// ระดับเปลี่ยนจากค่าที่ใกล้ "1 ชม.ก่อนเวลาวัดล่าสุด" ที่สุด (ยอมคลาด ±25 นาที) · ไม่มีค่าให้เทียบ = null
+function change1h(rows: { t: number; v: number }[] | undefined, time: string | null, diff: unknown): number | null {
+  const v = num(diff);
+  if (!rows?.length || !time || v === null) return null;
+  const target = new Date(time).getTime() - 3600e3;
+  let best: { t: number; v: number } | null = null;
+  for (const r of rows) if (!best || Math.abs(r.t - target) < Math.abs(best.t - target)) best = r;
+  return best && Math.abs(best.t - target) <= 25 * 60e3 ? Math.round((v - best.v) * 1000) / 1000 : null;
 }

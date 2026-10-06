@@ -17,6 +17,8 @@ export type Station = {
   capacity: number | null;
   qPct: number | null;
   trend: string | null;
+  sign: number | null; // ป้ายระดับของ ปภ. 1–5
+  change1h: number | null; // ระดับเปลี่ยนจากราว 1 ชม.ก่อน (ม.)
   level: Level;
   label: string;
 };

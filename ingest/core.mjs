@@ -79,6 +79,7 @@ export async function collect() {
       diff_bank: diff,
       pct_bank: rec.pct_bank,
       trend: rec.trend,
+      ddpm_sign: rec.ddpm_status ?? null,
       q,
       capacity,
       capacity_source: capacitySource,

@@ -4,7 +4,7 @@ import { getSnapshot } from "@/lib/data";
 import { bankText, fmt, fmtTime } from "@/lib/status";
 import { CANAL_STATIONS, CONFLUENCE, KHWAE_NOI, KHWAE_YAI, KM_FROM_MAEKLONG_DAM, LOWER, MOUTH_KM, SEGMENTS, travelHours, TRIBUTARY } from "@/lib/route";
 import type { Dam, Level, Station } from "@/lib/types";
-import { Badge, levelDot, levelText, Measured, Trend } from "@/components/ui";
+import { Badge, DdpmSign, levelDot, levelText, Measured, Trend } from "@/components/ui";
 
 export const revalidate = 300;
 export const metadata: Metadata = { title: "ผังเส้นทางน้ำ" };
@@ -208,6 +208,11 @@ function StationNode({ s, km, tributary }: { s: Station; km?: number; tributary?
         )}
         <Trend trend={s.trend} />
       </dl>
+      {!s.stale && (s.sign ?? 0) >= 2 && (
+        <div className="mt-1">
+          <DdpmSign sign={s.sign} compact />
+        </div>
+      )}
 
       <div className="mt-0.5 flex flex-wrap gap-x-3">
         <Measured time={s.time} ageMin={s.ageMin} stale={s.stale} />

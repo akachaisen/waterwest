@@ -294,8 +294,8 @@ async function fetchDdpm(codes, provinces = ["71", "70", "75", "74"]) {
         province: s.provName ?? null,
         lat: num(s.latitude),
         lon: num(s.longitude),
-        ddpm_status: s.waterLevelStatus ?? null
-        // ป้ายระดับของ ปภ. 1–5
+        ddpm_status: num(h.status ?? s.waterLevelStatus)
+        // ป้ายระดับของ ปภ. 1–5 (ตามเกณฑ์ของแต่ละสถานี)
       });
     })
   );
@@ -415,6 +415,7 @@ async function collect() {
       diff_bank: diff,
       pct_bank: rec.pct_bank,
       trend: rec.trend,
+      ddpm_sign: rec.ddpm_status ?? null,
       q,
       capacity,
       capacity_source: capacitySource,
@@ -507,6 +508,7 @@ function buildRows(s) {
     pct_bank: x.pct_bank ?? null,
     q: x.q,
     trend: x.trend ?? null,
+    sign: x.ddpm_sign ?? null,
     qc: x.qc?.length ? x.qc.join("; ") : null
   }));
   const dam_daily = s.dams.filter((d) => !d.missing).map((d) => ({

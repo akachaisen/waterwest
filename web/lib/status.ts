@@ -66,6 +66,30 @@ export function damDerived(r: {
   };
 }
 
+// ป้ายระดับของ ปภ. (cctv.disaster.go.th) — ข้อความทางการ ตามเกณฑ์ที่ ปภ. ตั้งไว้ของแต่ละสถานี
+export const DDPM_SIGN: Record<number, { text: string; level: Level }> = {
+  1: { text: "ติดตามข้อมูลข่าวสาร", level: "green" },
+  2: { text: "เฝ้าระวังอย่างใกล้ชิด", level: "yellow" },
+  3: { text: "เตรียมพร้อมรับมือสถานการณ์", level: "orange" },
+  4: { text: "ให้อพยพและปฏิบัติตามแนวทางที่กำหนด", level: "red" },
+  5: { text: "ต้องอพยพและปฏิบัติตามข้อสั่งการ", level: "red" },
+};
+
+// ทิศทางน้ำเทียบราว 1 ชม.ก่อน: ขึ้น/ลง เมื่อเปลี่ยนเกิน 2 ซม.
+export const CHANGE_EPS = 0.02;
+export function trendOf(change: number | null): string | null {
+  if (change === null) return null;
+  return change > CHANGE_EPS ? "เพิ่มขึ้น" : change < -CHANGE_EPS ? "ลดลง" : "ทรงตัว";
+}
+
+// สรุปทั้งลุ่มน้ำ: กี่สถานีน้ำขึ้น/ลง/ทรงตัว และกี่สถานีข้อมูลยังสด
+export function changeSummary(stations: Station[]) {
+  const live = stations.filter((x) => !x.stale);
+  const cmp = live.filter((x) => x.change1h !== null);
+  const n = (t: string) => cmp.filter((x) => trendOf(x.change1h) === t).length;
+  return { total: stations.length, live: live.length, compared: cmp.length, up: n("เพิ่มขึ้น"), down: n("ลดลง"), flat: n("ทรงตัว") };
+}
+
 export function fmt(n: number | null | undefined, d = 0): string {
   if (n === null || n === undefined || Number.isNaN(n)) return "-";
   return Number(n).toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });

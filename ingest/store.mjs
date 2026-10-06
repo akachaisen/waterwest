@@ -28,6 +28,7 @@ export function buildRows(s) {
       pct_bank: x.pct_bank ?? null,
       q: x.q,
       trend: x.trend ?? null,
+      sign: x.ddpm_sign ?? null,
       qc: x.qc?.length ? x.qc.join('; ') : null,
     }));
 
