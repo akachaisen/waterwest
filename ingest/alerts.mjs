@@ -16,23 +16,40 @@ export const RISE_STATIONS = ['K.25A', 'K.64', 'K.61', 'K.62', 'KRI04', 'K.49', 
 // แหล่งข้อมูลกรมชลฯ (SWOC กับค่ารายชั่วโมง hyd-app) อ้างอิงศูนย์ไม้วัดเดียวกัน → นับเป็นแหล่งเดียว
 const family = (src) => (String(src ?? '').startsWith('RID') ? 'RID' : src);
 
-// ใส่ rise_6h (ม.) ให้สถานีใน RISE_STATIONS — เทียบกับค่าแหล่งเดียวกันที่ใกล้ "6 ชม.ก่อนเวลาวัดล่าสุด" (ยอมคลาด ±45 นาที)
-export async function attachRise(db, snapshot) {
+// ใส่ค่าที่ต้องเทียบย้อนหลังจาก readings (แหล่งเดียวกัน):
+//  - rise_6h (ม.) ของ RISE_STATIONS: เทียบค่าที่ใกล้ "6 ชม.ก่อนเวลาวัดล่าสุด" (ยอมคลาด ±45 นาที)
+//  - trend ของสถานีที่แหล่งข้อมูลไม่บอกแนวโน้ม (เช่น ปภ.): เทียบค่าราว 1 ชม.ก่อน (±25 นาที) เกิน ±2 ซม. = ขึ้น/ลง
+export async function attachHistory(db, snapshot) {
+  const live = snapshot.stations.filter((s) => !s.missing && !s.stale && s.wl_msl != null && s.time);
+  const want = live.filter((s) => RISE_STATIONS.includes(s.code) || !s.trend);
+  if (!want.length) return;
   const since = new Date(new Date(snapshot.generated_at).getTime() - 8 * 36e5).toISOString();
-  const codes = RISE_STATIONS.map((c) => `"${c}"`).join(',');
-  const res = await fetch(`${db.url}/rest/v1/readings?select=station_code,source,measured_at,wl&station_code=in.(${encodeURIComponent(codes)})&measured_at=gte.${since}&wl=not.is.null&limit=5000`, { headers: db.headers });
+  const codes = want.map((s) => `"${s.code}"`).join(',');
+  const res = await fetch(`${db.url}/rest/v1/readings?select=station_code,source,measured_at,wl&station_code=in.(${encodeURIComponent(codes)})&measured_at=gte.${since}&wl=not.is.null&order=measured_at.desc&limit=5000`, { headers: db.headers });
   if (!res.ok) throw new Error(`อ่าน readings ไม่สำเร็จ: HTTP ${res.status}`);
   const rows = await res.json();
-  for (const s of snapshot.stations) {
-    if (!RISE_STATIONS.includes(s.code) || s.missing || s.stale || s.wl_msl == null || !s.time) continue;
-    const target = new Date(s.time).getTime() - 6 * 36e5;
+  const near = (s, hoursBack, tolMin) => {
+    const target = new Date(s.time).getTime() - hoursBack * 36e5;
     let best = null;
     for (const r of rows) {
       if (r.station_code !== s.code || family(r.source) !== family(s.source)) continue;
       const dt = Math.abs(new Date(r.measured_at).getTime() - target);
-      if (dt <= 45 * 60e3 && (!best || dt < best.dt)) best = { dt, wl: Number(r.wl) };
+      if (dt <= tolMin * 60e3 && (!best || dt < best.dt)) best = { dt, wl: Number(r.wl) };
     }
-    if (best) s.rise_6h = +(s.wl_msl - best.wl).toFixed(2);
+    return best;
+  };
+  for (const s of want) {
+    if (RISE_STATIONS.includes(s.code)) {
+      const b = near(s, 6, 45);
+      if (b) s.rise_6h = +(s.wl_msl - b.wl).toFixed(2);
+    }
+    if (!s.trend) {
+      const b = near(s, 1, 25);
+      if (b) {
+        const ch = s.wl_msl - b.wl;
+        s.trend = ch > 0.02 ? 'เพิ่มขึ้น' : ch < -0.02 ? 'ลดลง' : 'ทรงตัว';
+      }
+    }
   }
 }
 
@@ -110,9 +127,9 @@ export async function syncAlerts(db, snapshot, { lineReady }) {
   const prevBy = new Map(prev.map((a) => [a.key, a]));
   const activeKeys = new Set(prev.filter((a) => a.active).map((a) => a.key));
   try {
-    await attachRise(db, snapshot);
+    await attachHistory(db, snapshot);
   } catch {
-    // อ่านค่าย้อนหลังไม่ได้ — ข้ามกฎน้ำขึ้นเร็วรอบนี้
+    // อ่านค่าย้อนหลังไม่ได้ — ข้ามกฎน้ำขึ้นเร็ว/แนวโน้ม ปภ. รอบนี้
   }
   const current = evaluate(snapshot, activeKeys);
   const curKeys = new Set(current.map((c) => c.key));

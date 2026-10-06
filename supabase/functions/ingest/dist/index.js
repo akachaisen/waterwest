@@ -591,22 +591,37 @@ var RISE_M = 0.8;
 var RISE_CLEAR_M = 0.5;
 var RISE_STATIONS = ["K.25A", "K.64", "K.61", "K.62", "KRI04", "K.49", "KRI09", "K.12", "K.31", "K.11A", "K.63", "K.55A", "K.56A"];
 var family = (src) => String(src ?? "").startsWith("RID") ? "RID" : src;
-async function attachRise(db, snapshot) {
+async function attachHistory(db, snapshot) {
+  const live = snapshot.stations.filter((s) => !s.missing && !s.stale && s.wl_msl != null && s.time);
+  const want = live.filter((s) => RISE_STATIONS.includes(s.code) || !s.trend);
+  if (!want.length) return;
   const since = new Date(new Date(snapshot.generated_at).getTime() - 8 * 36e5).toISOString();
-  const codes = RISE_STATIONS.map((c) => `"${c}"`).join(",");
-  const res = await fetch(`${db.url}/rest/v1/readings?select=station_code,source,measured_at,wl&station_code=in.(${encodeURIComponent(codes)})&measured_at=gte.${since}&wl=not.is.null&limit=5000`, { headers: db.headers });
+  const codes = want.map((s) => `"${s.code}"`).join(",");
+  const res = await fetch(`${db.url}/rest/v1/readings?select=station_code,source,measured_at,wl&station_code=in.(${encodeURIComponent(codes)})&measured_at=gte.${since}&wl=not.is.null&order=measured_at.desc&limit=5000`, { headers: db.headers });
   if (!res.ok) throw new Error(`\u0E2D\u0E48\u0E32\u0E19 readings \u0E44\u0E21\u0E48\u0E2A\u0E33\u0E40\u0E23\u0E47\u0E08: HTTP ${res.status}`);
   const rows = await res.json();
-  for (const s of snapshot.stations) {
-    if (!RISE_STATIONS.includes(s.code) || s.missing || s.stale || s.wl_msl == null || !s.time) continue;
-    const target = new Date(s.time).getTime() - 6 * 36e5;
+  const near = (s, hoursBack, tolMin) => {
+    const target = new Date(s.time).getTime() - hoursBack * 36e5;
     let best = null;
     for (const r of rows) {
       if (r.station_code !== s.code || family(r.source) !== family(s.source)) continue;
       const dt = Math.abs(new Date(r.measured_at).getTime() - target);
-      if (dt <= 45 * 6e4 && (!best || dt < best.dt)) best = { dt, wl: Number(r.wl) };
+      if (dt <= tolMin * 6e4 && (!best || dt < best.dt)) best = { dt, wl: Number(r.wl) };
     }
-    if (best) s.rise_6h = +(s.wl_msl - best.wl).toFixed(2);
+    return best;
+  };
+  for (const s of want) {
+    if (RISE_STATIONS.includes(s.code)) {
+      const b = near(s, 6, 45);
+      if (b) s.rise_6h = +(s.wl_msl - b.wl).toFixed(2);
+    }
+    if (!s.trend) {
+      const b = near(s, 1, 25);
+      if (b) {
+        const ch = s.wl_msl - b.wl;
+        s.trend = ch > 0.02 ? "\u0E40\u0E1E\u0E34\u0E48\u0E21\u0E02\u0E36\u0E49\u0E19" : ch < -0.02 ? "\u0E25\u0E14\u0E25\u0E07" : "\u0E17\u0E23\u0E07\u0E15\u0E31\u0E27";
+      }
+    }
   }
 }
 function evaluate(snapshot, activeKeys = /* @__PURE__ */ new Set()) {
@@ -669,7 +684,7 @@ async function syncAlerts(db, snapshot, { lineReady }) {
   const prevBy = new Map(prev.map((a) => [a.key, a]));
   const activeKeys = new Set(prev.filter((a) => a.active).map((a) => a.key));
   try {
-    await attachRise(db, snapshot);
+    await attachHistory(db, snapshot);
   } catch {
   }
   const current = evaluate(snapshot, activeKeys);
@@ -921,6 +936,7 @@ var TRIBUTARIES = [
   ["\u0E25\u0E33\u0E20\u0E32\u0E0A\u0E35", ["K.25A", "K.64", "K.61", "K.62", "KRI04"]],
   ["\u0E25\u0E33\u0E15\u0E30\u0E40\u0E1E\u0E34\u0E19", ["K.49", "KRI09", "K.12"]]
 ];
+var DDPM_SIGN = { 3: "\u0E40\u0E15\u0E23\u0E35\u0E22\u0E21\u0E1E\u0E23\u0E49\u0E2D\u0E21\u0E23\u0E31\u0E1A\u0E21\u0E37\u0E2D\u0E2A\u0E16\u0E32\u0E19\u0E01\u0E32\u0E23\u0E13\u0E4C", 4: "\u0E43\u0E2B\u0E49\u0E2D\u0E1E\u0E22\u0E1E\u0E41\u0E25\u0E30\u0E1B\u0E0F\u0E34\u0E1A\u0E31\u0E15\u0E34\u0E15\u0E32\u0E21\u0E41\u0E19\u0E27\u0E17\u0E32\u0E07\u0E17\u0E35\u0E48\u0E01\u0E33\u0E2B\u0E19\u0E14", 5: "\u0E15\u0E49\u0E2D\u0E07\u0E2D\u0E1E\u0E22\u0E1E\u0E41\u0E25\u0E30\u0E1B\u0E0F\u0E34\u0E1A\u0E31\u0E15\u0E34\u0E15\u0E32\u0E21\u0E02\u0E49\u0E2D\u0E2A\u0E31\u0E48\u0E07\u0E01\u0E32\u0E23" };
 var fmt3 = (n, d = 0) => Number(n).toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
 var thai = (d) => new Date(d.getTime() + 7 * 36e5);
 var thaiDate = (d) => thai(d).toISOString().slice(0, 10);
@@ -963,6 +979,13 @@ function formatDaily(snapshot, active, webUrl, now = new Date(snapshot.generated
       const place = s.name.replace(/\s*\((ต้น)?(ลำภาชี|ลำตะเพิน)\)|\s*(ลำภาชี|ลำตะเพิน)\s*/g, " ").trim();
       L.push(`\u2022 ${river}: ${bankText(s.diff_bank)}${arrow(s.trend)} \u0E17\u0E35\u0E48${place} (${hm(s.time, now)} \xB7 ${n} \u0E2A\u0E16\u0E32\u0E19\u0E35)`);
     }
+  }
+  const rises = active.filter((a) => a.key?.startsWith("rise:"));
+  const signs = snapshot.stations.filter((s) => !s.missing && !s.stale && s.ddpm_sign >= 3).sort((a, b) => b.ddpm_sign - a.ddpm_sign);
+  if (rises.length || signs.length) {
+    L.push("", "\u26A1 \u0E08\u0E31\u0E1A\u0E15\u0E32");
+    for (const a of rises.slice(0, 4)) L.push(`\u2022 ${a.text}`);
+    for (const s of signs.slice(0, 4)) L.push(`\u2022 \u0E1B\u0E49\u0E32\u0E22 \u0E1B\u0E20. ${s.name} (${s.code}): ${DDPM_SIGN[s.ddpm_sign]} (${hm(s.time, now)})`);
   }
   const dams = (snapshot.dams ?? []).filter((d) => !d.missing);
   if (dams.length) {

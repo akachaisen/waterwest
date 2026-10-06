@@ -27,6 +27,9 @@ const TRIBUTARIES = [
   ['ลำตะเพิน', ['K.49', 'KRI09', 'K.12']],
 ];
 
+// ป้ายระดับของ ปภ. (ข้อความเดียวกับเว็บ cctv.disaster.go.th)
+const DDPM_SIGN = { 3: 'เตรียมพร้อมรับมือสถานการณ์', 4: 'ให้อพยพและปฏิบัติตามแนวทางที่กำหนด', 5: 'ต้องอพยพและปฏิบัติตามข้อสั่งการ' };
+
 const fmt = (n, d = 0) => Number(n).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
 const thai = (d) => new Date(d.getTime() + 7 * 3600e3); // ใช้ getUTC* อ่านเป็นเวลาไทย
 export const thaiDate = (d) => thai(d).toISOString().slice(0, 10);
@@ -67,6 +70,15 @@ export function formatDaily(snapshot, active, webUrl, now = new Date(snapshot.ge
       const place = s.name.replace(/\s*\((ต้น)?(ลำภาชี|ลำตะเพิน)\)|\s*(ลำภาชี|ลำตะเพิน)\s*/g, ' ').trim();
       L.push(`• ${river}: ${bankText(s.diff_bank)}${arrow(s.trend)} ที่${place} (${hm(s.time, now)} · ${n} สถานี)`);
     }
+  }
+
+  // จับตา: น้ำขึ้นเร็ว (เฝ้าระวัง) และป้ายระดับของ ปภ. ตั้งแต่ "เตรียมพร้อม" ขึ้นไป — ไม่ส่ง LINE แยก จึงสรุปไว้ตอนเช้า
+  const rises = active.filter((a) => a.key?.startsWith('rise:'));
+  const signs = snapshot.stations.filter((s) => !s.missing && !s.stale && s.ddpm_sign >= 3).sort((a, b) => b.ddpm_sign - a.ddpm_sign);
+  if (rises.length || signs.length) {
+    L.push('', '⚡ จับตา');
+    for (const a of rises.slice(0, 4)) L.push(`• ${a.text}`);
+    for (const s of signs.slice(0, 4)) L.push(`• ป้าย ปภ. ${s.name} (${s.code}): ${DDPM_SIGN[s.ddpm_sign]} (${hm(s.time, now)})`);
   }
 
   const dams = (snapshot.dams ?? []).filter((d) => !d.missing);
