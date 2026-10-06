@@ -5,7 +5,8 @@ export const LINE_OA_ID = "@waterwest"; // Premium ID (ซื้อ 5 ต.ค. 2
 
 export type Camera = {
   id: string;
-  dam: "VRK" | "SNR";
+  dam: "VRK" | "SNR" | "DDPM";
+  station?: string; // สถานีวัดน้ำที่กล้องตั้งอยู่ (กล้อง ปภ.)
   name: string;
   note?: string;
   src: string;
@@ -21,6 +22,22 @@ export const CAMERAS: Camera[] = [
   { id: "snr-crest", dam: "SNR", name: "สันเขื่อนศรีนครินทร์", src: "https://egatwater.egat.co.th/assets/CCTV/images/SNR/1.jpg" },
   { id: "snr-plant", dam: "SNR", name: "โรงไฟฟ้าและท้ายเขื่อน", src: "https://egatwater.egat.co.th/assets/CCTV/images/SNR/2.jpg" },
 ];
+
+// กล้องริมแม่น้ำของ ปภ. (cctv.disaster.go.th) ที่สถานีวัดระดับน้ำ จ.กาญจนบุรี — ภาพนิ่งล่าสุด อัปเดตราวทุก 5 นาที
+const DDPM_FRAME = (cam: string) => `https://cctv.disaster.go.th/api/webrtc/public-frame.jpeg?src=${cam}`;
+const DDPM_SITES: [string, string, string][] = [
+  ["KRI01", "สะพานบ้านแม่น้ำน้อย", "แควน้อย · ไทรโยค"],
+  ["KRI02", "สะพานปากแกแซง", "แควน้อย · ไทรโยค"],
+  ["KRI03", "สะพานวังโพ", "แควน้อย · ไทรโยค"],
+  ["KRI05", "สะพานหนองหญ้า", "แควน้อย · เมืองกาญจนบุรี"],
+  ["KRI04", "สะพานวัดหินแท่น", "ลำภาชี · ด่านมะขามเตี้ย"],
+  ["KRI09", "สะพาน ยธ. หนองปรือ", "ลำตะเพิน · หนองปรือ"],
+  ["KRI06", "สะพานบ้านช่องสะเดา", "แควใหญ่ · เมืองกาญจนบุรี"],
+  ["KRI07", "ลาดหญ้า (สะพานหลวงพ่อลำใย)", "แควใหญ่ · เมืองกาญจนบุรี"],
+];
+export const DDPM_CAMERAS: Camera[] = DDPM_SITES.flatMap(([code, name, note]) =>
+  [1, 2].map((n) => ({ id: `${code}-0${n}`, dam: "DDPM" as const, station: code, name: `${name} (กล้อง ${n})`, note, src: DDPM_FRAME(`${code}-0${n}`) })),
+);
 
 export type Place = { id: string; name: string; lat: number; lon: number; kind: "dam" | "home" | "mouth"; note?: string; damId?: string; approx?: boolean };
 

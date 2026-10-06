@@ -121,6 +121,45 @@ export async function fetchRidDams(dams = []) {
   }
 }
 
+// ปภ. — ระบบเฝ้าระวังภัยพิบัติตามลุ่มน้ำ (cctv.disaster.go.th) · สถานีวัดระดับน้ำ (ไม้วัด) พร้อมกล้อง อัปเดตทุก 5 นาที
+// ระดับน้ำเป็นค่าไม้วัดของแต่ละสถานี → ใช้ "เทียบตลิ่ง" (ระดับ − ตลิ่ง ในหน่วยเดียวกัน) · wl_msl คำนวณจากระดับตลิ่ง ม.รทก. ของ ปภ.
+// เวลาวัดใช้ histories[0].timeStamp (UTC) จากหน้ารายละเอียดสถานี
+const DDPM = 'https://cctv.disaster.go.th/api/v1';
+export async function fetchDdpm(codes, provinces = ['71', '70', '75', '74']) {
+  const want = new Set(codes);
+  const lists = await Promise.all(provinces.map((p) => get(`${DDPM}/stations?provCode=${p}&limit=100`, { timeout: 30000 })));
+  const found = lists.flatMap((l) => l.data ?? []).filter((s) => want.has(s.code));
+  const out = new Map();
+  await Promise.all(
+    found.map(async (s) => {
+      const raw = await get(`${DDPM}/stations/${encodeURIComponent(s.code)}`, { timeout: 30000 });
+      const d = raw?.data ?? raw ?? {};
+      const h = d.histories?.[0];
+      const level = num(h?.level ?? s.currentWaterLevel);
+      const bank = num(s.riverBankLevel);
+      if (!h || h.isOnline === 0 || s.status !== 1 || level === null) return; // สถานีออฟไลน์/ไม่มีค่า
+      const diff = bank !== null ? +(level - bank).toFixed(3) : null;
+      const bankMsl = num(s.dpmRiverBankLevel);
+      out.set(s.code, {
+        source: 'DDPM',
+        time: h.timeStamp ? new Date(`${String(h.timeStamp).replace(/Z?$/, 'Z')}`).toISOString() : null,
+        wl_msl: bankMsl && diff !== null ? +(bankMsl + diff).toFixed(3) : null,
+        bank_msl: bankMsl || null,
+        diff_bank: diff,
+        pct_bank: null,
+        trend: null,
+        q: null,
+        river: s.basin ?? null,
+        province: s.provName ?? null,
+        lat: num(s.latitude),
+        lon: num(s.longitude),
+        ddpm_status: s.waterLevelStatus ?? null, // ป้ายระดับของ ปภ. 1–5
+      });
+    }),
+  );
+  return out;
+}
+
 // Open-Meteo — ฝนรายวัน (เมื่อวาน + 3 วันข้างหน้า)
 export async function fetchRain(points) {
   const lat = points.map((p) => p.lat).join(',');

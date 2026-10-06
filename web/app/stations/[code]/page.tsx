@@ -8,6 +8,8 @@ import { KM_FROM_MAEKLONG_DAM, SEGMENTS, travelHours } from "@/lib/route";
 import { Badge, Card, levelText, Measured, Trend } from "@/components/ui";
 import { LineChart } from "@/components/LineChart";
 import { HouseThreshold } from "@/components/HouseThreshold";
+import { CameraGrid } from "@/components/CameraGrid";
+import { DDPM_CAMERAS } from "@/lib/places";
 
 export const revalidate = 300;
 
@@ -69,6 +71,12 @@ export default async function StationPage({ params }: Params) {
       </div>
       <Measured time={st.time} ageMin={st.ageMin} stale={st.stale} />
       {st.diffBank !== null && <HouseThreshold code={st.code} name={st.name} diffBank={st.diffBank} time={st.time} />}
+      {DDPM_CAMERAS.some((c) => c.station === st.code) && (
+        <section className="space-y-2">
+          <h2 className="text-base font-semibold">กล้องที่สถานี (ปภ.)</h2>
+          <CameraGrid cameras={DDPM_CAMERAS.filter((c) => c.station === st.code)} stationLinks={false} />
+        </section>
+      )}
 
       <Card>
         <h2 className="mb-1 text-base font-semibold">ระดับน้ำเทียบตลิ่ง 7 วัน</h2>

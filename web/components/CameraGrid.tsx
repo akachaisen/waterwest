@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import type { Camera } from "@/lib/places";
 
 // ภาพนิ่งจากกล้อง กฟผ. — โหลดใหม่ทุก 1 นาที (ภาพมีเวลาประทับในตัว)
-export function CameraGrid({ cameras }: { cameras: Camera[] }) {
+export function CameraGrid({ cameras, stationLinks = true }: { cameras: Camera[]; stationLinks?: boolean }) {
   const [tick, setTick] = useState(() => Math.floor(Date.now() / 60000));
   useEffect(() => {
     const id = setInterval(() => setTick(Math.floor(Date.now() / 60000)), 60000);
@@ -14,7 +14,7 @@ export function CameraGrid({ cameras }: { cameras: Camera[] }) {
   return (
     <div className="grid gap-3 sm:grid-cols-2">
       {cameras.map((c) => {
-        const src = `${c.src}?t=${tick}`;
+        const src = `${c.src}${c.src.includes("?") ? "&" : "?"}t=${tick}`;
         return (
           <figure key={c.id} className="overflow-hidden rounded-xl border border-border bg-surface">
             <a href={src} target="_blank" rel="noopener noreferrer" title="เปิดภาพเต็ม">
@@ -24,6 +24,11 @@ export function CameraGrid({ cameras }: { cameras: Camera[] }) {
             <figcaption className="px-3 py-2">
               <span className="block text-sm font-semibold">{c.name}</span>
               {c.note && <span className="block text-xs text-muted">{c.note}</span>}
+              {stationLinks && c.station && (
+                <a href={`/stations/${c.station}`} className="text-xs font-semibold text-accent">
+                  ดูระดับน้ำสถานี {c.station} →
+                </a>
+              )}
             </figcaption>
           </figure>
         );

@@ -8,8 +8,8 @@ export const SEGMENTS: Record<string, string> = {
   F: "สมุทรสงคราม – ปากอ่าวไทย",
 };
 
-export const KHWAE_NOI = ["MKVKD01", "MKVKD02", "K.54", "K.58", "K.10", "K.37"];
-export const KHWAE_YAI = ["K.35A", "K.12"];
+export const KHWAE_NOI = ["MKVKD01", "MKVKD02", "K.54", "KRI01", "K.58", "KRI02", "K.10", "KRI03", "K.37", "KRI04", "KRI05"];
+export const KHWAE_YAI = ["KRI09", "KRI06", "KRI07", "K.35A", "K.12"];
 export const CONFLUENCE = ["K.3A", "MKSND03"];
 export const LOWER = ["K.11A", "K.55A", "RAJ002", "K.56A", "RAJ001", "K.2B", "K.57", "TK.72", "TK.74", "MKG006", "PTT002"];
 
@@ -60,4 +60,4 @@ export function travelHours(km: number): number {
   return a[a.length - 1][1];
 }
 
-export const TRIBUTARY = new Set(["K.12"]);
+export const TRIBUTARY = new Set(["K.12", "KRI04", "KRI09"]); // ลำน้ำสาขา: ลำตะเพิน, ลำภาชี

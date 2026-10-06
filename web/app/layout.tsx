@@ -69,7 +69,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <footer className="border-t border-border bg-surface pb-[calc(4rem+env(safe-area-inset-bottom))] sm:pb-0">
           <div className="mx-auto max-w-5xl space-y-1.5 px-4 py-5 text-xs text-muted">
             <p>
-              ข้อมูลจาก กรมชลประทาน (SWOC, อ่างเก็บน้ำ) · คลังข้อมูลน้ำแห่งชาติ (สสน.) · กฟผ. · Open-Meteo — แต่ละค่าแสดงเวลาวัดของตัวเอง
+              ข้อมูลจาก กรมชลประทาน (SWOC, อ่างเก็บน้ำ) · คลังข้อมูลน้ำแห่งชาติ (สสน.) · กฟผ. · ปภ. (สถานีและกล้องริมน้ำ) · Open-Meteo — แต่ละค่าแสดงเวลาวัดของตัวเอง
             </p>
             <p className="font-medium">
               เว็บนี้ใช้ประกอบการติดตามสถานการณ์ ไม่ใช่ประกาศทางการ โปรดปฏิบัติตามคำแนะนำของ ปภ. และจังหวัด · สายด่วน ปภ. 1784

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { CAMERAS } from "@/lib/places";
+import { CAMERAS, DDPM_CAMERAS } from "@/lib/places";
 import { CameraGrid } from "@/components/CameraGrid";
 
 export const metadata: Metadata = { title: "กล้อง CCTV" };
@@ -10,7 +10,7 @@ export default function CctvPage() {
       <div>
         <h1 className="text-xl font-bold sm:text-2xl">กล้อง CCTV</h1>
         <p className="mt-1 text-sm text-muted">
-          ภาพจากกล้องของ กฟผ. ที่เขื่อนต้นน้ำ โหลดใหม่ทุก 1 นาที · เวลาที่ถ่ายดูได้จากตัวเลขบนภาพ · แตะภาพเพื่อเปิดขนาดเต็ม
+          ภาพนิ่งจากกล้องที่เขื่อนต้นน้ำ (กฟผ.) และริมแม่น้ำในกาญจนบุรี (ปภ.) โหลดใหม่ทุก 1 นาที · แตะภาพเพื่อเปิดขนาดเต็ม
         </p>
       </div>
 
@@ -22,6 +22,12 @@ export default function CctvPage() {
       <section className="space-y-3">
         <h2 className="text-base font-semibold">เขื่อนศรีนครินทร์ · แม่น้ำแควใหญ่</h2>
         <CameraGrid cameras={CAMERAS.filter((c) => c.dam === "SNR")} />
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="text-base font-semibold">ริมแม่น้ำ จ.กาญจนบุรี · กล้องที่สถานีวัดน้ำของ ปภ.</h2>
+        <p className="text-xs text-muted">ภาพนิ่งล่าสุดจากระบบเฝ้าระวังภัยพิบัติตามลุ่มน้ำ (cctv.disaster.go.th) อัปเดตราวทุก 5 นาที · บางกล้องอาจไม่มีภาพเมื่อสัญญาณขัดข้อง</p>
+        <CameraGrid cameras={DDPM_CAMERAS} />
       </section>
 
       <section className="rounded-2xl border border-border bg-surface p-4 text-sm">
@@ -47,7 +53,7 @@ export default function CctvPage() {
         </ul>
       </section>
 
-      <p className="text-xs text-muted">ภาพเป็นของ การไฟฟ้าฝ่ายผลิตแห่งประเทศไทย (กฟผ.) แสดงเพื่อการติดตามสถานการณ์น้ำ</p>
+      <p className="text-xs text-muted">ภาพเป็นของ การไฟฟ้าฝ่ายผลิตแห่งประเทศไทย (กฟผ.) และกรมป้องกันและบรรเทาสาธารณภัย (ปภ.) แสดงเพื่อการติดตามสถานการณ์น้ำ</p>
     </div>
   );
 }

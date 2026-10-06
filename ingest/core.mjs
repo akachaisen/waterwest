@@ -2,7 +2,7 @@
 // ใช้ร่วมกันระหว่าง Node (snapshot.mjs) และ Supabase Edge Function — ห้ามใช้ node:* ในไฟล์นี้
 
 import { STATIONS, SEGMENTS, DAMS, RAIN_POINTS, SEA_POINT, CCTV } from './stations.mjs';
-import { fetchThaiWater, fetchSwoc, fetchEgat, fetchRidDams, fetchRain, fetchSeaLevel, checkCctv } from './sources.mjs';
+import { fetchThaiWater, fetchSwoc, fetchEgat, fetchRidDams, fetchRain, fetchSeaLevel, checkCctv, fetchDdpm } from './sources.mjs';
 
 const STALE_HOURS = 3;
 
@@ -28,6 +28,7 @@ export async function collect() {
     rain: fetchRain(RAIN_POINTS),
     sea: fetchSeaLevel(SEA_POINT),
     cctv: checkCctv(CCTV),
+    ddpm: fetchDdpm(STATIONS.filter((s) => s.src === 'ddpm').map((s) => s.code)),
   };
   const keys = Object.keys(jobs);
   const settled = await Promise.allSettled(Object.values(jobs));
@@ -40,8 +41,8 @@ export async function collect() {
 
   // --- สถานีวัดน้ำ ---
   const stations = STATIONS.map((st) => {
-    const primary = st.src === 'swoc' ? src.swoc : src.thaiwater;
-    const fallback = st.src === 'swoc' ? src.thaiwater : src.swoc;
+    const primary = st.src === 'ddpm' ? src.ddpm : st.src === 'swoc' ? src.swoc : src.thaiwater;
+    const fallback = st.src === 'ddpm' ? null : st.src === 'swoc' ? src.thaiwater : src.swoc;
     let rec = primary?.get(st.code) ?? fallback?.get(st.code) ?? null;
     const egat = st.egat ? src.egat?.get(st.egat) : null;
     if (!rec && egat) rec = { source: 'EGAT', time: egat.time, wl_msl: egat.wl_msl, q: egat.q, diff_bank: null };

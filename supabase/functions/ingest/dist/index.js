@@ -11,14 +11,23 @@ var STATIONS = [
   { code: "MKVKD01", src: "tw", egat: "VKD01", seg: "A", name: "\u0E2D.\u0E17\u0E2D\u0E07\u0E1C\u0E32\u0E20\u0E39\u0E21\u0E34" },
   { code: "MKVKD02", src: "tw", egat: "VKD02", seg: "A", name: "\u0E1A\u0E49\u0E32\u0E19\u0E2B\u0E34\u0E19\u0E14\u0E32\u0E14" },
   { code: "K.54", src: "swoc", egat: "VKD03", seg: "A", name: "\u0E1A\u0E49\u0E32\u0E19\u0E25\u0E34\u0E48\u0E19\u0E16\u0E34\u0E48\u0E19 \u0E17\u0E2D\u0E07\u0E1C\u0E32\u0E20\u0E39\u0E21\u0E34" },
+  { code: "KRI01", src: "ddpm", seg: "A", name: "\u0E2A\u0E30\u0E1E\u0E32\u0E19\u0E1A\u0E49\u0E32\u0E19\u0E41\u0E21\u0E48\u0E19\u0E49\u0E33\u0E19\u0E49\u0E2D\u0E22 \u0E44\u0E17\u0E23\u0E42\u0E22\u0E04", cams: 2 },
   { code: "K.58", src: "swoc", egat: "VKD04", seg: "A", name: "\u0E1A\u0E49\u0E32\u0E19\u0E1B\u0E32\u0E01\u0E41\u0E0B\u0E07 \u0E44\u0E17\u0E23\u0E42\u0E22\u0E04" },
+  { code: "KRI02", src: "ddpm", seg: "A", name: "\u0E2A\u0E30\u0E1E\u0E32\u0E19\u0E1B\u0E32\u0E01\u0E41\u0E01\u0E41\u0E0B\u0E07 \u0E44\u0E17\u0E23\u0E42\u0E22\u0E04", cams: 2 },
   { code: "K.10", src: "swoc", egat: "VKD05", seg: "A", name: "\u0E1A\u0E49\u0E32\u0E19\u0E25\u0E38\u0E48\u0E21\u0E2A\u0E38\u0E48\u0E21 \u0E44\u0E17\u0E23\u0E42\u0E22\u0E04" },
+  { code: "KRI03", src: "ddpm", seg: "A", name: "\u0E2A\u0E30\u0E1E\u0E32\u0E19\u0E27\u0E31\u0E07\u0E42\u0E1E \u0E44\u0E17\u0E23\u0E42\u0E22\u0E04", cams: 2 },
   { code: "K.37", src: "swoc", egat: "VKD06", seg: "A", name: "\u0E1A\u0E49\u0E32\u0E19\u0E27\u0E31\u0E07\u0E40\u0E22\u0E47\u0E19 \u0E14\u0E48\u0E32\u0E19\u0E21\u0E30\u0E02\u0E32\u0E21\u0E40\u0E15\u0E35\u0E49\u0E22", key: true },
+  { code: "KRI04", src: "ddpm", seg: "A", name: "\u0E2A\u0E30\u0E1E\u0E32\u0E19\u0E27\u0E31\u0E14\u0E2B\u0E34\u0E19\u0E41\u0E17\u0E48\u0E19 \u0E25\u0E33\u0E20\u0E32\u0E0A\u0E35 \u0E14\u0E48\u0E32\u0E19\u0E21\u0E30\u0E02\u0E32\u0E21\u0E40\u0E15\u0E35\u0E49\u0E22", cams: 2 },
+  { code: "KRI05", src: "ddpm", seg: "A", name: "\u0E2A\u0E30\u0E1E\u0E32\u0E19\u0E2B\u0E19\u0E2D\u0E07\u0E2B\u0E0D\u0E49\u0E32 \u0E40\u0E21\u0E37\u0E2D\u0E07\u0E01\u0E32\u0E0D\u0E08\u0E19\u0E1A\u0E38\u0E23\u0E35", cams: 2 },
+  { code: "KRI09", src: "ddpm", seg: "B", name: "\u0E2A\u0E30\u0E1E\u0E32\u0E19 \u0E22\u0E18. \u0E2B\u0E19\u0E2D\u0E07\u0E1B\u0E23\u0E37\u0E2D (\u0E25\u0E33\u0E15\u0E30\u0E40\u0E1E\u0E34\u0E19)", cams: 2 },
+  { code: "KRI06", src: "ddpm", seg: "B", name: "\u0E2A\u0E30\u0E1E\u0E32\u0E19\u0E1A\u0E49\u0E32\u0E19\u0E0A\u0E48\u0E2D\u0E07\u0E2A\u0E30\u0E40\u0E14\u0E32", cams: 2 },
+  { code: "KRI07", src: "ddpm", seg: "B", name: "\u0E25\u0E32\u0E14\u0E2B\u0E0D\u0E49\u0E32 (\u0E2A\u0E30\u0E1E\u0E32\u0E19\u0E2B\u0E25\u0E27\u0E07\u0E1E\u0E48\u0E2D\u0E25\u0E33\u0E43\u0E22)", cams: 2 },
   { code: "K.35A", src: "swoc", egat: "SND02", seg: "B", name: "\u0E1A\u0E49\u0E32\u0E19\u0E2B\u0E19\u0E2D\u0E07\u0E1A\u0E31\u0E27 \u0E40\u0E21\u0E37\u0E2D\u0E07\u0E01\u0E32\u0E0D\u0E08\u0E19\u0E1A\u0E38\u0E23\u0E35", key: true },
   { code: "K.12", src: "swoc", egat: "SND06", seg: "B", name: "\u0E1A\u0E49\u0E32\u0E19\u0E17\u0E38\u0E48\u0E07\u0E19\u0E32\u0E19\u0E32\u0E07\u0E2B\u0E23\u0E2D\u0E01 (\u0E25\u0E33\u0E15\u0E30\u0E40\u0E1E\u0E34\u0E19)" },
   { code: "K.3A", src: "swoc", seg: "C", name: "\u0E2B\u0E19\u0E49\u0E32\u0E28\u0E32\u0E25\u0E32\u0E01\u0E25\u0E32\u0E07 \u0E08.\u0E01\u0E32\u0E0D\u0E08\u0E19\u0E1A\u0E38\u0E23\u0E35" },
   { code: "MKSND03", src: "tw", egat: "SND03", seg: "C", name: "\u0E27\u0E31\u0E14\u0E44\u0E0A\u0E22\u0E0A\u0E38\u0E21\u0E1E\u0E25\u0E0A\u0E19\u0E30\u0E2A\u0E07\u0E04\u0E23\u0E32\u0E21 (\u0E27\u0E31\u0E14\u0E43\u0E15\u0E49)" },
   { code: "K.11A", src: "swoc", seg: "E", name: "\u0E1A\u0E49\u0E32\u0E19\u0E27\u0E31\u0E07\u0E02\u0E19\u0E32\u0E22 \u0E17\u0E48\u0E32\u0E21\u0E48\u0E27\u0E07" },
+  { code: "KRI08", src: "ddpm", seg: "E", name: "\u0E2A\u0E27\u0E19\u0E2A\u0E32\u0E18\u0E32\u0E23\u0E13\u0E30 \u0E23.10 \u0E17\u0E48\u0E32\u0E21\u0E48\u0E27\u0E07", cams: 2 },
   { code: "K.55A", src: "swoc", seg: "E", name: "\u0E2A\u0E30\u0E1E\u0E32\u0E19\u0E04\u0E48\u0E32\u0E22\u0E2B\u0E25\u0E27\u0E07 \u0E1A\u0E49\u0E32\u0E19\u0E42\u0E1B\u0E48\u0E07", key: true },
   { code: "RAJ002", src: "tw", seg: "E", name: "\u0E1A\u0E49\u0E32\u0E19\u0E42\u0E1B\u0E48\u0E07" },
   { code: "K.56A", src: "swoc", seg: "E", name: "\u0E2A\u0E30\u0E1E\u0E32\u0E19\u0E1A\u0E49\u0E32\u0E19\u0E2B\u0E21\u0E49\u0E2D-\u0E2A\u0E23\u0E49\u0E2D\u0E22\u0E1F\u0E49\u0E32 \u0E42\u0E1E\u0E18\u0E32\u0E23\u0E32\u0E21" },
@@ -159,6 +168,42 @@ async function fetchRidDams(dams = []) {
     return out;
   }
 }
+var DDPM = "https://cctv.disaster.go.th/api/v1";
+async function fetchDdpm(codes, provinces = ["71", "70", "75", "74"]) {
+  const want = new Set(codes);
+  const lists = await Promise.all(provinces.map((p) => get(`${DDPM}/stations?provCode=${p}&limit=100`, { timeout: 3e4 })));
+  const found = lists.flatMap((l) => l.data ?? []).filter((s) => want.has(s.code));
+  const out = /* @__PURE__ */ new Map();
+  await Promise.all(
+    found.map(async (s) => {
+      const raw = await get(`${DDPM}/stations/${encodeURIComponent(s.code)}`, { timeout: 3e4 });
+      const d = raw?.data ?? raw ?? {};
+      const h = d.histories?.[0];
+      const level = num(h?.level ?? s.currentWaterLevel);
+      const bank = num(s.riverBankLevel);
+      if (!h || h.isOnline === 0 || s.status !== 1 || level === null) return;
+      const diff = bank !== null ? +(level - bank).toFixed(3) : null;
+      const bankMsl = num(s.dpmRiverBankLevel);
+      out.set(s.code, {
+        source: "DDPM",
+        time: h.timeStamp ? (/* @__PURE__ */ new Date(`${String(h.timeStamp).replace(/Z?$/, "Z")}`)).toISOString() : null,
+        wl_msl: bankMsl && diff !== null ? +(bankMsl + diff).toFixed(3) : null,
+        bank_msl: bankMsl || null,
+        diff_bank: diff,
+        pct_bank: null,
+        trend: null,
+        q: null,
+        river: s.basin ?? null,
+        province: s.provName ?? null,
+        lat: num(s.latitude),
+        lon: num(s.longitude),
+        ddpm_status: s.waterLevelStatus ?? null
+        // ป้ายระดับของ ปภ. 1–5
+      });
+    })
+  );
+  return out;
+}
 async function fetchRain(points) {
   const lat = points.map((p) => p.lat).join(",");
   const lon = points.map((p) => p.lon).join(",");
@@ -215,7 +260,8 @@ async function collect() {
     ridDams: fetchRidDams(DAMS),
     rain: fetchRain(RAIN_POINTS),
     sea: fetchSeaLevel(SEA_POINT),
-    cctv: checkCctv(CCTV)
+    cctv: checkCctv(CCTV),
+    ddpm: fetchDdpm(STATIONS.filter((s) => s.src === "ddpm").map((s) => s.code))
   };
   const keys = Object.keys(jobs);
   const settled = await Promise.allSettled(Object.values(jobs));
@@ -226,8 +272,8 @@ async function collect() {
     sourceStatus[keys[i]] = r.status === "fulfilled" ? "ok" : `error: ${r.reason?.message ?? r.reason}`;
   });
   const stations = STATIONS.map((st) => {
-    const primary = st.src === "swoc" ? src.swoc : src.thaiwater;
-    const fallback = st.src === "swoc" ? src.thaiwater : src.swoc;
+    const primary = st.src === "ddpm" ? src.ddpm : st.src === "swoc" ? src.swoc : src.thaiwater;
+    const fallback = st.src === "ddpm" ? null : st.src === "swoc" ? src.thaiwater : src.swoc;
     let rec = primary?.get(st.code) ?? fallback?.get(st.code) ?? null;
     const egat = st.egat ? src.egat?.get(st.egat) : null;
     if (!rec && egat) rec = { source: "EGAT", time: egat.time, wl_msl: egat.wl_msl, q: egat.q, diff_bank: null };
