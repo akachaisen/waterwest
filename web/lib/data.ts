@@ -14,6 +14,8 @@ type RawStation = {
   sign?: number | null; change1h?: number | null; change24h?: number | null;
 };
 
+// แหล่งกรมชลฯ (SWOC / รายชั่วโมง) ใช้ศูนย์ไม้วัดเดียวกัน → เทียบข้ามกันได้
+const family = (src: string | null) => (src?.startsWith("RID") ? "RID" : src);
 const ALERT_RANK: Record<string, number> = { red: 3, orange: 2, yellow: 1 };
 const num = (v: unknown): number | null => (v === null || v === undefined || v === "" ? null : Number(v));
 
@@ -110,7 +112,7 @@ async function fromSupabase(url: string, key: string): Promise<Snapshot> {
   ]);
   const hist = new Map<string, { t: number; v: number }[]>();
   for (const r of recent) {
-    const k = `${r.station_code}|${r.source}`; // เทียบเฉพาะแหล่งเดียวกัน (แต่ละแหล่งอาจอ้างตลิ่งต่างกันเล็กน้อย)
+    const k = `${r.station_code}|${family(r.source)}`; // เทียบเฉพาะแหล่งเดียวกัน (แต่ละแหล่งอาจอ้างตลิ่งต่างกันเล็กน้อย)
     const a = hist.get(k) ?? [];
     a.push({ t: new Date(r.measured_at).getTime(), v: Number(r.diff_bank) });
     hist.set(k, a);
@@ -147,7 +149,7 @@ async function fromSupabase(url: string, key: string): Promise<Snapshot> {
     origin: "supabase",
     generatedAt: run?.started_at ?? new Date().toISOString(),
     stations: latest.map((r) =>
-      toStation({ code: r.station_code, name: r.name, seg: r.seg, is_key: r.is_key, lat: ll.get(r.station_code)?.lat, lon: ll.get(r.station_code)?.lon, source: r.source, time: r.measured_at, wl: r.wl, diff_bank: r.diff_bank, q: r.q, capacity: r.capacity, trend: r.trend, sign: r.sign, change1h: change1h(hist.get(`${r.station_code}|${r.source}`), r.measured_at, r.diff_bank), change24h: change24h(r) }, now),
+      toStation({ code: r.station_code, name: r.name, seg: r.seg, is_key: r.is_key, lat: ll.get(r.station_code)?.lat, lon: ll.get(r.station_code)?.lon, source: r.source, time: r.measured_at, wl: r.wl, diff_bank: r.diff_bank, q: r.q, capacity: r.capacity, trend: r.trend, sign: r.sign, change1h: change1h(hist.get(`${r.station_code}|${family(r.source)}`), r.measured_at, r.diff_bank), change24h: change24h(r) }, now),
     ),
     dams: damRows.map((d) =>
       damDerived({ id: d.dam_id, name: d.name, date: d.date, volume: Number(d.volume), normal_storage: Number(d.normal_storage), pct: Number(d.pct), inflow_mcm: Number(d.inflow_mcm), outflow_mcm: Number(d.outflow_mcm) }),

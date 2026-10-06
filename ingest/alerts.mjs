@@ -13,6 +13,9 @@ export const RISE_M = 0.8;
 const RISE_CLEAR_M = 0.5;
 export const RISE_STATIONS = ['K.25A', 'K.64', 'K.61', 'K.62', 'KRI04', 'K.49', 'KRI09', 'K.12', 'K.31', 'K.11A', 'K.63', 'K.55A', 'K.56A'];
 
+// แหล่งข้อมูลกรมชลฯ (SWOC กับค่ารายชั่วโมง hyd-app) อ้างอิงศูนย์ไม้วัดเดียวกัน → นับเป็นแหล่งเดียว
+const family = (src) => (String(src ?? '').startsWith('RID') ? 'RID' : src);
+
 // ใส่ rise_6h (ม.) ให้สถานีใน RISE_STATIONS — เทียบกับค่าแหล่งเดียวกันที่ใกล้ "6 ชม.ก่อนเวลาวัดล่าสุด" (ยอมคลาด ±45 นาที)
 export async function attachRise(db, snapshot) {
   const since = new Date(new Date(snapshot.generated_at).getTime() - 8 * 36e5).toISOString();
@@ -25,7 +28,7 @@ export async function attachRise(db, snapshot) {
     const target = new Date(s.time).getTime() - 6 * 36e5;
     let best = null;
     for (const r of rows) {
-      if (r.station_code !== s.code || r.source !== s.source) continue;
+      if (r.station_code !== s.code || family(r.source) !== family(s.source)) continue;
       const dt = Math.abs(new Date(r.measured_at).getTime() - target);
       if (dt <= 45 * 60e3 && (!best || dt < best.dt)) best = { dt, wl: Number(r.wl) };
     }

@@ -590,6 +590,7 @@ var fmt2 = (n, d = 0) => Number(n).toLocaleString("en-US", { minimumFractionDigi
 var RISE_M = 0.8;
 var RISE_CLEAR_M = 0.5;
 var RISE_STATIONS = ["K.25A", "K.64", "K.61", "K.62", "KRI04", "K.49", "KRI09", "K.12", "K.31", "K.11A", "K.63", "K.55A", "K.56A"];
+var family = (src) => String(src ?? "").startsWith("RID") ? "RID" : src;
 async function attachRise(db, snapshot) {
   const since = new Date(new Date(snapshot.generated_at).getTime() - 8 * 36e5).toISOString();
   const codes = RISE_STATIONS.map((c) => `"${c}"`).join(",");
@@ -601,7 +602,7 @@ async function attachRise(db, snapshot) {
     const target = new Date(s.time).getTime() - 6 * 36e5;
     let best = null;
     for (const r of rows) {
-      if (r.station_code !== s.code || r.source !== s.source) continue;
+      if (r.station_code !== s.code || family(r.source) !== family(s.source)) continue;
       const dt = Math.abs(new Date(r.measured_at).getTime() - target);
       if (dt <= 45 * 6e4 && (!best || dt < best.dt)) best = { dt, wl: Number(r.wl) };
     }
