@@ -139,56 +139,74 @@ async function hydPost(path, body, form = false) {
   if (!res.ok) throw new Error(`HTTP ${res.status} ${path}`);
   return res.json();
 }
-export async function fetchRidHourly(now = new Date()) {
-  const day = async (d) => {
-    const tc = thaiDateBE(d);
-    const dw = { UtokID: '7', BasinID: '14', TimeCurrent: tc };
-    const model = await hydPost('HDService.svc/GetColModelAllHL', JSON.stringify({ hydro: dw }));
-    const form = new URLSearchParams({ 'DW[UtokID]': '7', 'DW[BasinID]': '14', 'DW[TimeCurrent]': tc, _search: 'false', rows: '100', page: '1', sidx: 'indexhourly', sord: 'asc' });
-    const data = await hydPost('getGroupHourlyWaterLevelReportAllHL.ashx', form.toString(), true);
-    return { model, rows: data.rows ?? [], date: new Date(now.getTime() + 7 * 36e5 - (now - d)) };
+// ตารางรายชั่วโมงของวันหนึ่ง (เวลาไทย) → Map รหัสสถานี → { bank, zg, qMax, province, points: [{ time, wl, q }] }
+export async function ridHourlyDay(d) {
+  const tc = thaiDateBE(d);
+  const model = await hydPost('HDService.svc/GetColModelAllHL', JSON.stringify({ hydro: { UtokID: '7', BasinID: '14', TimeCurrent: tc } }));
+  const form = new URLSearchParams({ 'DW[UtokID]': '7', 'DW[BasinID]': '14', 'DW[TimeCurrent]': tc, _search: 'false', rows: '100', page: '1', sidx: 'indexhourly', sord: 'asc' });
+  const data = await hydPost('getGroupHourlyWaterLevelReportAllHL.ashx', form.toString(), true);
+  const t = new Date(d.getTime() + 7 * 36e5); // วันที่ตามเวลาไทย
+  const codes = model.groupHeadersStationCode.map((x) => x.titleText.trim());
+  const prov = (model.groupHeadersStationProvince ?? []).map((x) => x.titleText);
+  const out = new Map();
+  codes.forEach((code, i) => {
+    const n = i + 1;
+    const wlLabel = model.colModel.find((c) => c.name === `wlvalues${n}`)?.label ?? '';
+    const qLabel = model.colModel.find((c) => c.name === `qvalues${n}`)?.label ?? '';
+    const points = (data.rows ?? [])
+      .filter((r) => r[`wlvalues${n}`] !== null && r[`wlvalues${n}`] !== undefined)
+      .map((r) => ({
+        // ชั่วโมงในตาราง (เวลาไทย) · 24.00 = เที่ยงคืนวันถัดไป
+        time: new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), t.getUTCDate(), Number(r.hourlytime) - 7)).toISOString(),
+        wl: +Number(r[`wlvalues${n}`]).toFixed(2),
+        q: num(r[`qvalues${n}`]),
+      }));
+    out.set(code, {
+      bank: num(wlLabel.match(/ระดับตลิ่ง\s*(-?[\d.]+)/)?.[1]),
+      zg: num(wlLabel.match(/ZG\s*([+-]?[\d.]+)/)?.[1]),
+      qMax: num(qLabel.match(/ปริมาณ\s*([\d.]+)/)?.[1]),
+      province: prov[i] ?? null,
+      points,
+    });
+  });
+  return out;
+}
+
+// ค่าแบบ ม.รทก./เทียบตลิ่ง ของจุดหนึ่ง
+export function ridPoint(st, p) {
+  return {
+    wl_msl: st.zg !== null ? +(st.zg + p.wl).toFixed(3) : null,
+    bank_msl: st.zg !== null && st.bank !== null ? +(st.zg + st.bank).toFixed(3) : null,
+    diff_bank: st.bank !== null ? +(p.wl - st.bank).toFixed(3) : null,
   };
-  const parse = ({ model, rows }, d) => {
-    const codes = model.groupHeadersStationCode.map((x) => x.titleText.trim());
-    const prov = (model.groupHeadersStationProvince ?? []).map((x) => x.titleText);
+}
+
+export async function fetchRidHourly(now = new Date()) {
+  const latest = (day) => {
     const out = new Map();
-    codes.forEach((code, i) => {
-      const n = i + 1;
-      const wlLabel = model.colModel.find((c) => c.name === `wlvalues${n}`)?.label ?? '';
-      const qLabel = model.colModel.find((c) => c.name === `qvalues${n}`)?.label ?? '';
-      const bank = num(wlLabel.match(/ระดับตลิ่ง\s*(-?[\d.]+)/)?.[1]);
-      const zg = num(wlLabel.match(/ZG\s*([+-]?[\d.]+)/)?.[1]);
-      const qMax = num(qLabel.match(/ปริมาณ\s*([\d.]+)/)?.[1]);
-      const pts = rows.filter((r) => r[`wlvalues${n}`] !== null && r[`wlvalues${n}`] !== undefined);
-      if (!pts.length) return;
+    for (const [code, st] of day) {
+      const pts = st.points;
+      if (!pts.length) continue;
       const last = pts[pts.length - 1];
       const prev3 = pts.length > 3 ? pts[pts.length - 4] : pts[0];
-      const wl = +Number(last[`wlvalues${n}`]).toFixed(2);
-      const ch = wl - Number(prev3[`wlvalues${n}`]);
-      const hour = Number(last.hourlytime);
-      // เวลาในตาราง = ชั่วโมงของวันนั้น (เวลาไทย) · 24.00 = เที่ยงคืนวันถัดไป
-      const t = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), hour - 7));
+      const ch = last.wl - prev3.wl;
       out.set(code, {
         source: 'RID-HYD',
-        time: t.toISOString(),
-        wl_msl: zg !== null ? +(zg + wl).toFixed(3) : null,
-        bank_msl: zg !== null && bank !== null ? +(zg + bank).toFixed(3) : null,
-        diff_bank: bank !== null ? +(wl - bank).toFixed(3) : null,
+        time: last.time,
+        ...ridPoint(st, last),
         pct_bank: null,
         trend: pts.length < 2 ? null : ch > 0.02 ? 'เพิ่มขึ้น' : ch < -0.02 ? 'ลดลง' : 'คงที่',
-        q: num(last[`qvalues${n}`]),
-        q_max: qMax,
-        province: prov[i] ?? null,
+        q: last.q,
+        q_max: st.qMax,
+        province: st.province,
       });
-    });
+    }
     return out;
   };
-  const thaiToday = new Date(now.getTime() + 7 * 36e5);
-  const today = parse(await day(now), thaiToday);
+  const today = latest(await ridHourlyDay(now));
   if (today.size >= 5) return today;
   // หลังเที่ยงคืนตารางวันใหม่ยังว่าง → ใช้ของเมื่อวาน
-  const y = new Date(now.getTime() - 86400e3);
-  return parse(await day(y), new Date(y.getTime() + 7 * 36e5));
+  return latest(await ridHourlyDay(new Date(now.getTime() - 86400e3)));
 }
 
 // ปภ. — ระบบเฝ้าระวังภัยพิบัติตามลุ่มน้ำ (cctv.disaster.go.th) · สถานีวัดระดับน้ำ (ไม้วัด) พร้อมกล้อง อัปเดตทุก 5 นาที

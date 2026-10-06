@@ -10,6 +10,9 @@ on:
       dam_days:
         description: 'จำนวนวันย้อนหลังของเขื่อน (กรมชลฯ)'
         default: '30'
+      rid_days:
+        description: 'จำนวนวันย้อนหลังของสถานีกรมชลฯ รายชั่วโมง (0 = ไม่ดึง, สูงสุด 90)'
+        default: '0'
 
 jobs:
   backfill:
@@ -26,4 +29,5 @@ jobs:
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
           STATION_DAYS: ${{ inputs.station_days }}
           DAM_DAYS: ${{ inputs.dam_days }}
-        run: node ingest/backfill.mjs "$STATION_DAYS" "$DAM_DAYS"
+          RID_DAYS: ${{ inputs.rid_days }}
+        run: node ingest/backfill.mjs "$STATION_DAYS" "$DAM_DAYS" "$RID_DAYS"

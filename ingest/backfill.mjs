@@ -1,22 +1,25 @@
 // ขั้นที่ 4: เติมข้อมูลย้อนหลังลงฐานข้อมูล (รันครั้งเดียว หรือรันซ้ำได้ — upsert ไม่ซ้ำ)
 //  - ระดับน้ำ/ปริมาณ ย้อนหลังจาก ThaiWater (เฉพาะสถานีที่ ThaiWater มี)
 //  - เขื่อนรายวัน ย้อนหลังจาก API อ่างเก็บน้ำ กรมชลฯ
-// รัน: node ingest/backfill.mjs [จำนวนวันสถานี=7] [จำนวนวันเขื่อน=30]   (ต้องตั้ง SUPABASE_URL / SUPABASE_SECRET_KEY)
+//  - ระดับน้ำรายชั่วโมงสถานีกรมชลฯ (hyd-app) — สถานีที่ ThaiWater ไม่มี เช่น K.63 K.64
+// รัน: node ingest/backfill.mjs [จำนวนวันสถานี=7] [จำนวนวันเขื่อน=30] [จำนวนวันกรมชลฯ รายชั่วโมง=0]   (ต้องตั้ง SUPABASE_URL / SUPABASE_SECRET_KEY)
 //      เพิ่ม --dry-run เพื่อดึงข้อมูลโดยไม่บันทึก
 
 import { STATIONS, DAMS } from './stations.mjs';
 import { dbConfig, upsert } from './store.mjs';
+import { ridHourlyDay, ridPoint } from './sources.mjs';
 
 const UA = 'WaterWest/0.1 (non-commercial Mae Klong flood monitoring)';
 const args = process.argv.slice(2).filter((a) => !a.startsWith('--'));
 const DRY = process.argv.includes('--dry-run');
 const days = (v, def, max) => {
   const n = Number.parseInt(v ?? def, 10);
-  if (!Number.isFinite(n) || n < 1 || n > max) throw new Error(`จำนวนวันไม่ถูกต้อง: ${v} (1–${max})`);
+  if (!Number.isFinite(n) || n < 0 || n > max) throw new Error(`จำนวนวันไม่ถูกต้อง: ${v} (0–${max})`);
   return n;
 };
 const STATION_DAYS = days(args[0], 7, 31);
 const DAM_DAYS = days(args[1], 30, 365);
+const RID_DAYS = days(args[2], 0, 90); // ค่ารายชั่วโมงกรมชลฯ (hyd-app) ย้อนหลัง (0 = ไม่ดึง)
 
 const getJson = async (url) => {
   const res = await fetch(url, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(90000) });
@@ -67,6 +70,30 @@ async function stationHistory() {
   return rows;
 }
 
+async function ridHistory() {
+  const want = new Set(STATIONS.filter((s) => s.src === 'swoc').map((s) => s.code));
+  const rows = [];
+  const cutoff = Date.now() - 3 * 36e5;
+  for (let i = 0; i < RID_DAYS; i++) {
+    const d = new Date(Date.now() - i * 86400e3);
+    try {
+      const day = await ridHourlyDay(d);
+      for (const [code, st] of day) {
+        if (!want.has(code)) continue;
+        for (const p of st.points) {
+          if (Date.parse(p.time) > cutoff) continue; // ค่าล่าสุดให้การดึงปกติเขียน (มีแนวโน้ม)
+          const v = ridPoint(st, p);
+          rows.push({ station_code: code, source: 'RID-HYD', measured_at: p.time, wl: v.wl_msl, bank: v.bank_msl, diff_bank: v.diff_bank, pct_bank: null, q: p.q, trend: null, qc: 'backfill' });
+        }
+      }
+    } catch (e) {
+      console.log(`  กรมชลฯ รายชั่วโมง ${ymd(d)}: ${e.message}`);
+    }
+  }
+  console.log(`  กรมชลฯ รายชั่วโมง: ${rows.length} ค่า (${RID_DAYS} วัน)`);
+  return rows;
+}
+
 async function damHistory() {
   const rows = [];
   for (let i = 1; i <= DAM_DAYS; i++) {
@@ -92,9 +119,9 @@ async function damHistory() {
 async function main() {
   const db = dbConfig();
   if (!db && !DRY) throw new Error('ต้องตั้งค่า SUPABASE_URL / SUPABASE_SECRET_KEY (หรือใช้ --dry-run)');
-  console.log(`ย้อนหลัง: สถานี ${STATION_DAYS} วัน, เขื่อน ${DAM_DAYS} วัน${DRY ? ' (dry-run)' : ''}`);
-  const readings = await stationHistory();
-  const dams = await damHistory();
+  console.log(`ย้อนหลัง: สถานี ${STATION_DAYS} วัน, เขื่อน ${DAM_DAYS} วัน, กรมชลฯ รายชั่วโมง ${RID_DAYS} วัน${DRY ? ' (dry-run)' : ''}`);
+  const readings = [...(STATION_DAYS ? await stationHistory() : []), ...(RID_DAYS ? await ridHistory() : [])];
+  const dams = DAM_DAYS ? await damHistory() : [];
   if (DRY) { console.log(`dry-run: readings ${readings.length}, dam_daily ${dams.length}`); return; }
   // สถานีต้องมีในตาราง stations ก่อน (foreign key) — การดึงปกติสร้างไว้แล้ว
   console.log(`บันทึก readings ${await upsert(db, 'readings', readings)} แถว, dam_daily ${await upsert(db, 'dam_daily', dams)} แถว`);
