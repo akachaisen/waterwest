@@ -3,7 +3,8 @@ import { getSnapshot } from "@/lib/data";
 import { latestMaeklongRelease } from "@/lib/announcements";
 import { getRainObs } from "@/lib/rainObs";
 import { RainObsCard } from "@/components/RainObsCard";
-import { fmt, fmtSigned, fmtTime, LEVEL_TEXT, overall, worst } from "@/lib/status";
+import { HomeArea } from "@/components/HomeArea";
+import { bankText, fmt, fmtTime, LEVEL_TEXT, overall, worst } from "@/lib/status";
 import { SEGMENTS } from "@/lib/route";
 import type { Dam, Level, Station } from "@/lib/types";
 import { Badge, Card, levelBg, levelDot, levelText, Measured, Meter, SectionTitle, Trend } from "@/components/ui";
@@ -37,6 +38,9 @@ export default async function Home() {
 
   return (
     <div className="space-y-5">
+      {/* แถวบ้านคุณ (จำไว้ในเครื่อง) */}
+      <HomeArea />
+
       {/* สถานะรวม */}
       <section className={`rounded-2xl border border-border p-5 ${levelBg(status.level)}`}>
         <div className="flex flex-wrap items-center gap-2">
@@ -175,26 +179,35 @@ export default async function Home() {
             )}
             <p className="mt-1 text-xs text-muted">ช่วงน้ำขึ้นสูงตรงกับน้ำเหนือมาก พื้นที่อัมพวา–เมืองสมุทรสงครามเสี่ยงที่สุด</p>
           </Card>
-          <Card>
-            <SectionTitle>เบอร์ฉุกเฉิน</SectionTitle>
-            <ul className="grid grid-cols-2 gap-2 text-sm">
-              {[
-                ["สายด่วน ปภ.", "1784"],
-                ["การแพทย์ฉุกเฉิน", "1669"],
-                ["เหตุด่วนเหตุร้าย", "191"],
-                ["เขื่อนวชิราลงกรณ", "034-599077"],
-              ].map(([n, t]) => (
-                <li key={t}>
-                  <a href={`tel:${t.replace(/-/g, "")}`} className="block rounded-xl border border-border px-3 py-2 hover:border-accent">
-                    <span className="block text-xs text-muted">{n}</span>
-                    <span className="tnum font-semibold">{t}</span>
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </Card>
         </div>
       </div>
+
+      {/* โทรขอความช่วยเหลือ — ปุ่มใหญ่ แตะเพื่อโทร */}
+      <Card>
+        <SectionTitle>โทรขอความช่วยเหลือ</SectionTitle>
+        <a href="tel:1784" className="flex items-center justify-between rounded-xl bg-red px-4 py-3 text-white">
+          <span>
+            <span className="block text-sm">สายด่วน ปภ. · น้ำท่วม 24 ชม.</span>
+            <span className="tnum text-2xl font-bold">1784</span>
+          </span>
+          <span className="text-sm font-semibold">แตะเพื่อโทร 📞</span>
+        </a>
+        <ul className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {[
+            ["แพทย์ฉุกเฉิน", "1669"],
+            ["เหตุด่วนเหตุร้าย", "191"],
+            ["กรมชลประทาน", "1460"],
+            ["เขื่อนวชิราลงกรณ", "034-599077"],
+          ].map(([n, t]) => (
+            <li key={t}>
+              <a href={`tel:${t.replace(/-/g, "")}`} className="block rounded-xl border border-border px-3 py-2.5 hover:border-accent">
+                <span className="block text-xs text-muted">{n}</span>
+                <span className="tnum text-lg font-semibold">{t}</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </Card>
     </div>
   );
 }
@@ -277,10 +290,8 @@ function BankTile({ title, sub, station }: { title: string; sub: string; station
         </div>
         <Badge level={station.level}>{station.label}</Badge>
       </div>
-      <p className={`tnum mt-3 text-2xl font-bold ${levelText(station.level)}`}>
-        {fmtSigned(station.diffBank)} <span className="text-sm font-normal text-muted">ม.</span>
-      </p>
-      <p className="text-xs text-muted">{above ? "สูงกว่าตลิ่ง" : "ต่ำกว่าตลิ่ง"}</p>
+      <p className={`tnum mt-3 text-xl font-bold ${levelText(station.level)}`}>{bankText(station.diffBank)}</p>
+      <p className="text-xs text-muted">{above ? "น้ำล้นตลิ่งแล้ว" : "ระยะจากผิวน้ำถึงขอบตลิ่ง"}</p>
       <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
         <Trend trend={station.trend} />
         <Measured time={station.time} ageMin={station.ageMin} stale={station.stale} />

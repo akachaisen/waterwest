@@ -76,6 +76,26 @@ export function fmtSigned(n: number | null, d = 2): string {
   return `${n > 0 ? "+" : ""}${fmt(n, d)}`;
 }
 
+// ระดับเทียบตลิ่งเป็นภาษาชาวบ้าน (แทนตัวเลขติดลบ เช่น -1.33)
+export function bankText(d: number | null | undefined, digits = 2): string {
+  if (d === null || d === undefined || Number.isNaN(d)) return "ไม่มีค่าเทียบตลิ่ง";
+  if (Math.abs(d) < 0.005) return "ระดับเท่าตลิ่ง";
+  return d > 0 ? `สูงกว่าตลิ่ง ${fmt(d, digits)} ม.` : `ต่ำกว่าตลิ่ง ${fmt(-d, digits)} ม.`;
+}
+
+// การเปลี่ยนแปลงระดับน้ำเป็นคำพูด (เช่น "สูงขึ้น 0.12 ม.")
+export function changeText(d: number | null | undefined, digits = 2): string {
+  if (d === null || d === undefined || Number.isNaN(d)) return "-";
+  if (Math.abs(d) < 0.005) return "เท่าเดิม";
+  return d > 0 ? `สูงขึ้น ${fmt(d, digits)} ม.` : `ลดลง ${fmt(-d, digits)} ม.`;
+}
+
+// แนวโน้มเป็นคำพูด
+export function trendText(trend: string | null | undefined): string | null {
+  if (!trend) return null;
+  return ({ เพิ่มขึ้น: "น้ำขึ้น", ลดลง: "น้ำลด", คงที่: "ทรงตัว", ทรงตัว: "ทรงตัว" } as Record<string, string>)[trend] ?? trend;
+}
+
 export function fmtTime(iso: string | null): string {
   if (!iso) return "-";
   return new Date(iso).toLocaleString("th-TH", {

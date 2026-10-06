@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getSnapshot } from "@/lib/data";
 import { getStationHistory, summarize } from "@/lib/history";
-import { fmt, fmtSigned, fmtTime } from "@/lib/status";
+import { bankText, changeText, fmt, fmtTime } from "@/lib/status";
 import { KM_FROM_MAEKLONG_DAM, SEGMENTS, travelHours } from "@/lib/route";
 import { Badge, Card, levelText, Measured, Trend } from "@/components/ui";
 import { LineChart } from "@/components/LineChart";
@@ -53,13 +53,13 @@ export default async function StationPage({ params }: Params) {
       </div>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Stat label="เทียบตลิ่งตอนนี้" value={st.diffBank === null ? "-" : `${fmtSigned(st.diffBank)} ม.`} tone={levelText(st.level)}>
+        <Stat label="เทียบตลิ่งตอนนี้" value={st.diffBank === null ? "-" : bankText(st.diffBank)} tone={levelText(st.level)}>
           <Trend trend={st.trend} />
         </Stat>
-        <Stat label="สูงสุดใน 7 วัน" value={sd ? `${fmtSigned(sd.max.v)} ม.` : "-"}>
+        <Stat label="สูงสุดใน 7 วัน" value={sd ? bankText(sd.max.v) : "-"}>
           {sd && <span className="text-xs text-muted">{fmtTime(new Date(sd.max.t).toISOString())}</span>}
         </Stat>
-        <Stat label="เปลี่ยนใน 24 ชม." value={sd?.change24h != null ? `${fmtSigned(sd.change24h)} ม.` : "-"} />
+        <Stat label="เปลี่ยนใน 24 ชม." value={sd?.change24h != null ? changeText(sd.change24h) : "-"} />
         <Stat label="ปริมาณน้ำ" value={st.q === null ? "-" : `${fmt(st.q)}`}>
           <span className="text-xs text-muted">
             ลบ.ม./วิ{st.capacity ? ` · ความจุลำน้ำ ${fmt(st.capacity)} (${st.qPct}%)` : ""}

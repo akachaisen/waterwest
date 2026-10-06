@@ -39,9 +39,10 @@ export function Badge({ level, children }: { level: Level; children?: React.Reac
 export function Trend({ trend }: { trend: string | null }) {
   if (!trend) return null;
   const map: Record<string, [string, string]> = {
-    เพิ่มขึ้น: ["▲", "ขึ้น"],
-    ลดลง: ["▼", "ลง"],
+    เพิ่มขึ้น: ["▲", "น้ำขึ้น"],
+    ลดลง: ["▼", "น้ำลด"],
     คงที่: ["▬", "ทรงตัว"],
+    ทรงตัว: ["▬", "ทรงตัว"],
   };
   const [icon, label] = map[trend] ?? ["", trend];
   return (

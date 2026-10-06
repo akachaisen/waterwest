@@ -100,6 +100,8 @@ export async function fetchRidDams(dams = []) {
     const j = await get('https://app.rid.go.th/reservoir/api/dam/public');
     const out = new Map();
     for (const reg of j.data) for (const d of reg.dam) out.set(d.id, { ...d, date: j.date, via: 'RID' });
+    // ช่วงเช้ากรมชลฯ อาจลงรายการของวันใหม่ไว้ก่อนแต่ยังไม่มีตัวเลข (ค่าว่าง/0) — ถือว่าไม่ได้ข้อมูล แล้วไปใช้ ThaiWater
+    if (dams.some((k) => !(out.get(k.id)?.percent_storage > 0))) throw new Error(`ข้อมูลเขื่อนกรมชลฯ วันที่ ${j.date} ยังไม่ครบ`);
     return out;
   } catch (e) {
     if (!dams.length) throw e;

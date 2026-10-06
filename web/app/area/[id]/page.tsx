@@ -4,9 +4,9 @@ import { notFound } from "next/navigation";
 import { getSnapshot } from "@/lib/data";
 import { analyze, getElevation, getPointRain, resolvePlace, RISK_TYPE } from "@/lib/area";
 import { getSea } from "@/lib/forecast";
-import { bankText, TIDE_STATION, townHighs } from "@/lib/tide";
+import { TIDE_STATION, townHighs } from "@/lib/tide";
 import { CALIBRATION, OFFICIAL_RATCHABURI_H } from "@/lib/route";
-import { fmt, fmtSigned, fmtTime, LEVEL_TEXT } from "@/lib/status";
+import { bankText, fmt, fmtTime, LEVEL_TEXT } from "@/lib/status";
 import type { Level } from "@/lib/types";
 import { Badge, Card, levelBg, levelDot, levelText, Measured, SectionTitle, Trend } from "@/components/ui";
 import { AreaActions } from "@/components/AreaActions";
@@ -147,8 +147,8 @@ export default async function AreaPage({ params, searchParams }: Props) {
                 <Badge level={x.stale ? "unknown" : x.level}>{x.stale ? "ข้อมูลเก่า" : x.label}</Badge>
               </div>
               <p className="tnum text-sm">
-                {x.code} · ห่าง {fmt(distKm, 1)} กม.{canal ? " · สถานีในคลอง" : ""} · เทียบตลิ่ง{" "}
-                <b className={levelText(x.level)}>{x.diffBank === null ? "-" : `${fmtSigned(x.diffBank)} ม.`}</b> <Trend trend={x.trend} />
+                {x.code} · ห่าง {fmt(distKm, 1)} กม.{canal ? " · สถานีในคลอง" : ""} ·{" "}
+                <b className={levelText(x.level)}>{x.diffBank === null ? "-" : bankText(x.diffBank)}</b> <Trend trend={x.trend} />
               </p>
               <Measured time={x.time} ageMin={x.ageMin} stale={x.stale} />
             </li>
@@ -156,8 +156,8 @@ export default async function AreaPage({ params, searchParams }: Props) {
           {r.ref && !r.nearest.some((n) => n.station.code === r.ref!.code) && (
             <li className="py-2.5 text-sm">
               สถานีบนแม่น้ำสายหลักที่ใช้ประเมิน:{" "}
-              <Link href={`/stations/${encodeURIComponent(r.ref.code)}`} className="font-semibold text-accent">{r.ref.name} ({r.ref.code})</Link> · เทียบตลิ่ง{" "}
-              <b className={levelText(r.ref.level)}>{fmtSigned(r.ref.diffBank)} ม.</b>
+              <Link href={`/stations/${encodeURIComponent(r.ref.code)}`} className="font-semibold text-accent">{r.ref.name} ({r.ref.code})</Link> ·{" "}
+              <b className={levelText(r.ref.level)}>{bankText(r.ref.diffBank)}</b>
             </li>
           )}
         </ul>
@@ -168,7 +168,7 @@ export default async function AreaPage({ params, searchParams }: Props) {
         <Card>
           <SectionTitle hint={<Link href="/forecast" className="font-medium text-accent">ดูทั้งเส้นทาง →</Link>}>มวลน้ำจากต้นน้ำ</SectionTitle>
           <p className="text-sm">
-            สภาพน้ำที่ <b>{r.eta.from.name}</b> ({fmtTime(r.eta.from.time)}: เทียบตลิ่ง {fmtSigned(r.eta.from.diffBank)} ม. <Trend trend={r.eta.from.trend} />)
+            สภาพน้ำที่ <b>{r.eta.from.name}</b> ({fmtTime(r.eta.from.time)}: {bankText(r.eta.from.diffBank)} <Trend trend={r.eta.from.trend} />)
             จะมาถึงพื้นที่นี้ราว <b>{hhmm(r.eta.at)}</b> <span className="text-muted">(+{fmt(r.eta.hours)} ชม.)</span>
           </p>
           <p className="mt-1 text-xs text-muted">

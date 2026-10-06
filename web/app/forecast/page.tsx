@@ -7,7 +7,7 @@ import { getRainObs } from "@/lib/rainObs";
 import { getStationTide, TIDE_STATION, TYPICAL_ERR_M } from "@/lib/tide";
 import { RainObsCard } from "@/components/RainObsCard";
 import { BASE_CODE, getRain7, getSea, recentSea, tideClash, TOWN_TIDE_LAG_H, travelPlan, upcomingHighs } from "@/lib/forecast";
-import { fmt, fmtSigned, fmtTime } from "@/lib/status";
+import { bankText, changeText, fmt, fmtTime } from "@/lib/status";
 import { Badge, Card, levelText, SectionTitle, Trend } from "@/components/ui";
 import { LineChart } from "@/components/LineChart";
 
@@ -59,9 +59,9 @@ export default async function ForecastPage() {
             <div className="rounded-xl bg-surface-2 p-3 text-sm">
               <p>
                 ตอนนี้ที่ <b>บ้านโป่ง (K.55A)</b> ระดับน้ำ{" "}
-                <b className={levelText(base.level)}>{base.diffBank === null ? "-" : `${fmtSigned(base.diffBank)} ม. เทียบตลิ่ง`}</b>
+                <b className={levelText(base.level)}>{base.diffBank === null ? "-" : bankText(base.diffBank)}</b>
                 {base.q !== null && <> · ปริมาณ <b>{fmt(base.q)}</b> ลบ.ม./วิ</>}
-                {change6h !== null && <> · เปลี่ยน {fmtSigned(change6h)} ม. ใน 6 ชม.</>} <Trend trend={base.trend} />
+                {change6h !== null && <> · ใน 6 ชม. {changeText(change6h)}</>} <Trend trend={base.trend} />
               </p>
               <p className="mt-1 font-semibold">
                 {rising
@@ -104,7 +104,7 @@ export default async function ForecastPage() {
                           {r.station ? (
                             <>
                               <Badge level={r.station.stale ? "unknown" : r.station.level}>{r.station.stale ? "ข้อมูลเก่า" : r.station.label}</Badge>
-                              <span className="block text-xs text-muted">{r.station.diffBank === null ? "" : `${fmtSigned(r.station.diffBank)} ม.`}</span>
+                              <span className="block text-xs text-muted">{r.station.diffBank === null ? "" : bankText(r.station.diffBank)}</span>
                             </>
                           ) : (
                             <span className="text-xs text-muted">—</span>

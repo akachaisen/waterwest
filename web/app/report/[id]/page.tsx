@@ -4,8 +4,8 @@ import { notFound } from "next/navigation";
 import { getSnapshot } from "@/lib/data";
 import { analyze, getPointRain, resolvePlace, RISK_TYPE } from "@/lib/area";
 import { getSea, travelPlan } from "@/lib/forecast";
-import { bankText, townHighs } from "@/lib/tide";
-import { fmt, fmtSigned, LEVEL_TEXT, overall } from "@/lib/status";
+import { townHighs } from "@/lib/tide";
+import { bankText, fmt, LEVEL_TEXT, overall } from "@/lib/status";
 import type { Level } from "@/lib/types";
 import { levelBg, levelDot, levelText } from "@/components/ui";
 import { ReportToolbar } from "@/components/ReportToolbar";
@@ -115,12 +115,12 @@ export default async function ReportPage({ params, searchParams }: Props) {
             <div className="rounded-lg border border-border p-2.5">
               <p className="text-[11px] text-muted">น้ำท้ายเขื่อนแม่กลอง (K.55A)</p>
               <p className="text-[20px] font-bold">{fmt(k55?.q)} <span className="text-[11px] font-normal">ลบ.ม./วิ</span></p>
-              <p className="text-[11px] text-muted">เทียบตลิ่ง {fmtSigned(k55?.diffBank ?? null)} ม. · {k55?.trend ?? "-"}</p>
+              <p className="text-[11px] text-muted">{bankText(k55?.diffBank ?? null)} · {k55?.trend ?? "-"}</p>
               <p className="text-[10px] text-muted">วัดเมื่อ {dt(k55?.time)}</p>
             </div>
             <div className="rounded-lg border border-border p-2.5">
               <p className="text-[11px] text-muted">สถานีอ้างอิงของพื้นที่</p>
-              <p className={`text-[20px] font-bold ${levelText(area.ref?.level ?? "unknown")}`}>{area.ref ? `${fmtSigned(area.ref.diffBank)} ม.` : "-"}</p>
+              <p className={`text-[20px] font-bold ${levelText(area.ref?.level ?? "unknown")}`}>{area.ref ? bankText(area.ref.diffBank) : "-"}</p>
               <p className="text-[11px] text-muted">{area.ref ? `${area.ref.name} (${area.ref.code}) · ${area.ref.trend ?? "-"}` : "ไม่มีข้อมูล"}</p>
               <p className="text-[10px] text-muted">วัดเมื่อ {dt(area.ref?.time)}</p>
             </div>
@@ -171,7 +171,7 @@ export default async function ReportPage({ params, searchParams }: Props) {
                   <tr className="border-t border-border">
                     <td className="py-1 font-semibold">บ้านโป่ง (K.55A)</td>
                     <td><Chip level={plan.base.level}>{plan.base.label}</Chip></td>
-                    <td>{fmtSigned(plan.base.diffBank)} ม.</td>
+                    <td>{bankText(plan.base.diffBank)}</td>
                     <td className="text-muted">ต้นทาง · {dt(plan.base.time)}</td>
                   </tr>
                 )}
@@ -179,7 +179,7 @@ export default async function ReportPage({ params, searchParams }: Props) {
                   <tr key={r.code} className="border-t border-border">
                     <td className="py-1 font-semibold">{r.name}</td>
                     <td>{r.station ? <Chip level={r.station.stale ? "unknown" : r.station.level}>{r.station.stale ? "ข้อมูลเก่า" : r.station.label}</Chip> : "-"}</td>
-                    <td>{r.station ? `${fmtSigned(r.station.diffBank)} ม.` : "-"}</td>
+                    <td>{r.station ? bankText(r.station.diffBank) : "-"}</td>
                     <td>{dt(r.eta)} <span className="text-muted">(+{fmt(r.hoursFromBase)} ชม.)</span></td>
                   </tr>
                 ))}

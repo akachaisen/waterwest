@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getSnapshot } from "@/lib/data";
 import { getStationHistory } from "@/lib/history";
-import { fmt, fmtSigned, fmtTime } from "@/lib/status";
+import { bankText, fmt, fmtTime } from "@/lib/status";
 import { SEGMENTS, CONFLUENCE, KHWAE_NOI, KHWAE_YAI, LOWER } from "@/lib/route";
 import { Badge, levelDot, levelText } from "@/components/ui";
 import { Sparkline } from "@/components/Sparkline";
@@ -52,7 +52,7 @@ export default async function StationsPage() {
                     </span>
                     <span className="w-24 shrink-0 text-right">
                       <span className={`tnum block text-sm font-semibold ${levelText(x.level)}`}>
-                        {x.diffBank === null ? "-" : `${fmtSigned(x.diffBank)} ม.`}
+                        {x.diffBank === null ? "-" : bankText(x.diffBank)}
                       </span>
                       <Badge level={x.stale ? "unknown" : x.level}>{x.stale ? "ข้อมูลเก่า" : x.label}</Badge>
                     </span>

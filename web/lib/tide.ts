@@ -77,4 +77,3 @@ export async function townHighs(sea: SeaSeries | null, n = 3): Promise<{ highs: 
     fromStation: false,
   };
 }
-export const bankText = (d: number) => (d >= 0 ? `สูงกว่าตลิ่ง ${d.toFixed(2)} ม.` : `ต่ำกว่าตลิ่ง ${(-d).toFixed(2)} ม.`);

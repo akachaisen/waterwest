@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getSnapshot } from "@/lib/data";
-import { fmt, fmtSigned, fmtTime } from "@/lib/status";
+import { bankText, fmt, fmtTime } from "@/lib/status";
 import { CANAL_STATIONS, CONFLUENCE, KHWAE_NOI, KHWAE_YAI, KM_FROM_MAEKLONG_DAM, LOWER, MOUTH_KM, SEGMENTS, travelHours, TRIBUTARY } from "@/lib/route";
 import type { Dam, Level, Station } from "@/lib/types";
 import { Badge, levelDot, levelText, Measured, Trend } from "@/components/ui";
@@ -192,8 +192,8 @@ function StationNode({ s, km, tributary }: { s: Station; km?: number; tributary?
 
       <dl className="tnum mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-sm">
         <div className="flex gap-1">
-          <dt className="text-muted">เทียบตลิ่ง</dt>
-          <dd className={`font-semibold ${levelText(s.level)}`}>{s.diffBank === null ? "-" : `${fmtSigned(s.diffBank)} ม.`}</dd>
+          <dt className="text-muted">ระดับน้ำ</dt>
+          <dd className={`font-semibold ${levelText(s.level)}`}>{s.diffBank === null ? "-" : bankText(s.diffBank)}</dd>
         </div>
         {s.q !== null && (
           <div className="flex gap-1">

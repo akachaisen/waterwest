@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import { IBM_Plex_Sans_Thai } from "next/font/google";
 import { NavLinks } from "@/components/NavLinks";
+import { BottomNav } from "@/components/BottomNav";
 import "./globals.css";
 
 const thai = IBM_Plex_Sans_Thai({
@@ -27,6 +28,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
+  viewportFit: "cover", // ให้เมนูล่างเว้นขอบจอ iPhone (safe-area)
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#f4f6f9" },
     { media: "(prefers-color-scheme: dark)", color: "#0a111c" },
@@ -52,13 +54,19 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
                 <span className="hidden text-[0.7rem] text-muted sm:block">ติดตามลุ่มน้ำแม่กลอง</span>
               </span>
             </Link>
-            <NavLinks />
+            {/* จอใหญ่: เมนูด้านบน · มือถือ: เมนูด้านล่าง (BottomNav) */}
+            <div className="hidden sm:block">
+              <NavLinks />
+            </div>
+            <a href="tel:1784" className="rounded-full border border-red/40 px-3 py-1 text-sm font-bold text-red sm:hidden">
+              โทร 1784
+            </a>
           </div>
         </header>
 
         <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-5">{children}</main>
 
-        <footer className="border-t border-border bg-surface">
+        <footer className="border-t border-border bg-surface pb-[calc(4rem+env(safe-area-inset-bottom))] sm:pb-0">
           <div className="mx-auto max-w-5xl space-y-1.5 px-4 py-5 text-xs text-muted">
             <p>
               ข้อมูลจาก กรมชลประทาน (SWOC, อ่างเก็บน้ำ) · คลังข้อมูลน้ำแห่งชาติ (สสน.) · กฟผ. · Open-Meteo — แต่ละค่าแสดงเวลาวัดของตัวเอง
@@ -68,6 +76,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             </p>
           </div>
         </footer>
+        <BottomNav />
       </body>
     </html>
   );

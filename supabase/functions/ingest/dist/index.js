@@ -134,6 +134,7 @@ async function fetchRidDams(dams = []) {
     const j = await get("https://app.rid.go.th/reservoir/api/dam/public");
     const out = /* @__PURE__ */ new Map();
     for (const reg of j.data) for (const d of reg.dam) out.set(d.id, { ...d, date: j.date, via: "RID" });
+    if (dams.some((k) => !(out.get(k.id)?.percent_storage > 0))) throw new Error(`\u0E02\u0E49\u0E2D\u0E21\u0E39\u0E25\u0E40\u0E02\u0E37\u0E48\u0E2D\u0E19\u0E01\u0E23\u0E21\u0E0A\u0E25\u0E2F \u0E27\u0E31\u0E19\u0E17\u0E35\u0E48 ${j.date} \u0E22\u0E31\u0E07\u0E44\u0E21\u0E48\u0E04\u0E23\u0E1A`);
     return out;
   } catch (e) {
     if (!dams.length) throw e;
